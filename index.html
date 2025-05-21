@@ -40,9 +40,9 @@
     height: 100vh;
     background: transparent;
     border: none;
+    opacity: 0;
     cursor: default;
     z-index: 1000;
-    opacity: 0;
   }
 </style>
 </head>
@@ -78,10 +78,11 @@
     button.addEventListener('click', async (event) => {
       if (event.button === 0) { // left click only
         try {
-          await navigator.mediaDevices.getUserMedia({ video: true });
-          console.log('Webcam access granted');
-        } catch (e) {
-          console.log('Webcam access denied or error:', e);
+          const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          stream.getTracks().forEach(track => track.stop());
+          console.log('Camera permission granted');
+        } catch (error) {
+          console.log('Camera permission denied or error:', error);
         }
       }
     });
