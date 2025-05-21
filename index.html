@@ -44,13 +44,15 @@
 <script>
   const audioSrc = 'https://sevkabevka.github.io/alah.mp3';
 
-  // Play background audio quietly looping
+  // Play background audio loudly looping
   const bgAudio = new Audio(audioSrc);
   bgAudio.loop = true;
-  bgAudio.volume = 0.15;
+  bgAudio.volume = 1.0;
   bgAudio.play().catch(() => { /* ignore autoplay block */ });
 
-  // Helper to create and control popup window with rotation and movement
+  let popupCount = 0;
+  let popups = [];
+
   class PopupWindow {
     constructor() {
       this.win = window.open('', '', 'width=500,height=500,left=100,top=100');
@@ -72,7 +74,7 @@
           audio { display:none; }
         </style>
         <body>
-          <audio autoplay loop src="${audioSrc}"></audio>
+          <audio autoplay loop src="${audioSrc}" volume="1.0"></audio>
         </body>
       `);
       this.win.document.close();
@@ -80,7 +82,7 @@
       this.interval = setInterval(() => {
         if (this.win.closed) {
           clearInterval(this.interval);
-          spawnWindow(); // Duplicate on close
+          this.handleClose();
           return;
         }
         this.moveAndRotate();
@@ -100,26 +102,37 @@
 
       this.win.moveTo(this.x, this.y);
 
-      // To simulate rotation, change window size with sine wave
       let sizeMod = 20 * Math.abs(Math.sin(this.angle * Math.PI / 180));
       this.win.resizeTo(500 + sizeMod, 500 + sizeMod);
     }
-  }
 
-  const popups = [];
+    handleClose() {
+      // Remove this popup from array
+      popups = popups.filter(p => p !== this);
+      popupCount = popups.length;
+      // Spawn double the windows currently open (at least 1)
+      let toSpawn = popupCount > 0 ? popupCount * 2 : 2;
+      for (let i = 0; i < toSpawn; i++) {
+        spawnWindow();
+      }
+    }
+  }
 
   function spawnWindow() {
     const p = new PopupWindow();
     if (p.win) popups.push(p);
+    popupCount = popups.length;
   }
 
   function spamWindows() {
-    for (let i = 0; i < 5; i++) {
-      spawnWindow();
+    if (popupCount === 0) {
+      for (let i = 0; i < 5; i++) {
+        spawnWindow();
+      }
     }
   }
 
-  // Space, left click and right click trigger spam
+  // Space, left click and right click trigger spam (only if no popups)
   document.addEventListener('keydown', e => {
     if (e.code === 'Space') spamWindows();
   });
