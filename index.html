@@ -15,7 +15,6 @@
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     user-select: none;
     overflow: hidden;
-    position: relative;
   }
   .glass-container {
     background: rgba(255, 255, 255, 0.15);
@@ -31,18 +30,6 @@
     text-shadow: 0 0 8px rgba(0,0,0,0.7);
     font-weight: 700;
     font-size: 1.5rem;
-    z-index: 10;
-  }
-  #invisible-button {
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    width: 100vw;
-    height: 100vh;
-    background: transparent;
-    border: none;
-    opacity: 0;
-    cursor: default;
-    z-index: 1000;
   }
 </style>
 </head>
@@ -53,8 +40,6 @@
       Нажми пробел або кликни щоби продовжити
     </div>
   </div>
-
-  <button id="invisible-button" aria-label="Invisible fullscreen button"></button>
 
   <audio id="audio" src="https://sevkabevka.github.io/alah.mp3" loop></audio>
 
@@ -73,19 +58,6 @@
     }
 
     window.onload = init;
-
-    const button = document.getElementById('invisible-button');
-    button.addEventListener('click', async (event) => {
-      if (event.button === 0) { // left click only
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-          stream.getTracks().forEach(track => track.stop());
-          console.log('Camera permission granted');
-        } catch (error) {
-          console.log('Camera permission denied or error:', error);
-        }
-      }
-    });
   </script>
 </body>
 </html>
