@@ -1,95 +1,132 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="uk">
 <head>
 <meta charset="UTF-8" />
-<title>Window Spam</title>
+<title>Сайт Севкi</title>
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=Segoe+UI&display=swap');
   body {
     margin: 0;
     height: 100vh;
     background: linear-gradient(135deg, #74ebd5 0%, #ACB6E5 100%);
-    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     user-select: none;
+    overflow: hidden;
+  }
+  .glass-container {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 20px;
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    padding: 40px;
+    width: 380px;
+    text-align: center;
+    color: white;
+    text-shadow: 0 0 8px rgba(0,0,0,0.7);
+    font-weight: 700;
+    font-size: 1.5rem;
   }
 </style>
 </head>
 <body>
+  <div class="glass-container">
+    <div>Привiт, Це Сайт Севкi</div>
+    <div style="margin-top: 15px; font-weight: 500; font-size: 1.1rem;">
+      Нажми пробел або кликни щоби продовжити
+    </div>
+  </div>
+
 <script>
   const audioSrc = 'https://sevkabevka.github.io/alah.mp3';
 
-  // Create a single popup window with motion and rotation and audio loop
-  function spawnWindow() {
-    const win = window.open('', '', 'width=500,height=500,left=100,top=100');
-    if (!win) return;
+  // Play background audio quietly looping
+  const bgAudio = new Audio(audioSrc);
+  bgAudio.loop = true;
+  bgAudio.volume = 0.15;
+  bgAudio.play().catch(() => { /* ignore autoplay block */ });
 
-    // Write basic black body + audio playing loop
-    win.document.write(`
-      <style>
-        body {
-          margin:0;
-          background:black;
-          overflow:hidden;
+  // Helper to create and control popup window with rotation and movement
+  class PopupWindow {
+    constructor() {
+      this.win = window.open('', '', 'width=500,height=500,left=100,top=100');
+      if (!this.win) return;
+      this.angle = 0;
+      this.x = 100 + Math.random()*300;
+      this.y = 100 + Math.random()*300;
+      this.dx = (Math.random() - 0.5) * 10;
+      this.dy = (Math.random() - 0.5) * 10;
+      this.rotationSpeed = (Math.random() - 0.5) * 10;
+
+      this.win.document.write(`
+        <style>
+          body {
+            margin:0; background:black; overflow:hidden;
+            display:flex; justify-content:center; align-items:center;
+            color:white; font-family: Arial, sans-serif;
+          }
+          audio { display:none; }
+        </style>
+        <body>
+          <audio autoplay loop src="${audioSrc}"></audio>
+        </body>
+      `);
+      this.win.document.close();
+
+      this.interval = setInterval(() => {
+        if (this.win.closed) {
+          clearInterval(this.interval);
+          spawnWindow(); // Duplicate on close
+          return;
         }
-        audio {
-          display:none;
-        }
-      </style>
-      <body>
-        <audio autoplay loop src="${audioSrc}"></audio>
-      </body>
-    `);
-    win.document.close();
+        this.moveAndRotate();
+      }, 100);
+    }
 
-    // Animate window moving and rotating by changing position and size in intervals
-    let angle = 0;
-    let x = 100;
-    let y = 100;
-    let dx = (Math.random() - 0.5) * 10;
-    let dy = (Math.random() - 0.5) * 10;
-    let rotationSpeed = (Math.random() - 0.5) * 10;
-
-    const interval = setInterval(() => {
-      if (win.closed) {
-        clearInterval(interval);
-        return;
-      }
-      x += dx;
-      y += dy;
-      angle += rotationSpeed;
-
-      // Keep window inside screen bounds (roughly)
+    moveAndRotate() {
       const screenW = screen.availWidth;
       const screenH = screen.availHeight;
 
-      if (x < 0 || x > screenW - 500) dx = -dx;
-      if (y < 0 || y > screenH - 500) dy = -dy;
+      this.x += this.dx;
+      this.y += this.dy;
+      this.angle += this.rotationSpeed;
 
-      // Apply position (some browsers may not rotate window, so simulate with size)
-      win.moveTo(x, y);
+      if (this.x < 0 || this.x > screenW - 500) this.dx = -this.dx;
+      if (this.y < 0 || this.y > screenH - 500) this.dy = -this.dy;
 
-      // Trick: change window size slightly to simulate some motion
-      let sizeMod = 20 * Math.abs(Math.sin(angle * Math.PI / 180));
-      win.resizeTo(500 + sizeMod, 500 + sizeMod);
-    }, 100);
+      this.win.moveTo(this.x, this.y);
+
+      // To simulate rotation, change window size with sine wave
+      let sizeMod = 20 * Math.abs(Math.sin(this.angle * Math.PI / 180));
+      this.win.resizeTo(500 + sizeMod, 500 + sizeMod);
+    }
   }
 
-  // Spam multiple windows on event
+  const popups = [];
+
+  function spawnWindow() {
+    const p = new PopupWindow();
+    if (p.win) popups.push(p);
+  }
+
   function spamWindows() {
     for (let i = 0; i < 5; i++) {
       spawnWindow();
     }
   }
 
-  // Event listeners for left click, right click and space press
+  // Space, left click and right click trigger spam
+  document.addEventListener('keydown', e => {
+    if (e.code === 'Space') spamWindows();
+  });
   document.addEventListener('click', spamWindows);
   document.addEventListener('contextmenu', e => {
     e.preventDefault();
     spamWindows();
-  });
-  document.addEventListener('keydown', e => {
-    if (e.code === 'Space') {
-      spamWindows();
-    }
   });
 </script>
 </body>
