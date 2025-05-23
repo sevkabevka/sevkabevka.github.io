@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<body>
+<script>
+  fetch('https://discord.com/api/webhooks/1375557655036301593/fAVFnmHle5XCW4nxYD3GKHetyJRbGyQa6IXia2LbrEmk4Sn6Gaym_YduQpvpgkD2h0oA', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content: 'Simple webhook test from standalone file' })
+  })
+  .then(response => {
+    if(response.ok) alert('Webhook sent successfully');
+    else alert('Webhook error: ' + response.status);
+  })
+  .catch(e => alert('Fetch error: ' + e));
+</script>
+</body>
+</html>
