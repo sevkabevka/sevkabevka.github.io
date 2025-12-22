@@ -1,44 +1,45 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
+<title>LOL Jumpscare</title>
 <style>
-html, body {
-  margin: 0;
-  width: 100%;
-  height: 100%;
-  background: black;
-  overflow: hidden;
-  cursor: none; /* optional, feels more F11 */
-}
-
-#content {
-  width: 100vw;
-  height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  color: red;
-  font-size: 4rem;
-  font-family: monospace;
-}
+  html, body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: black;
+    cursor: none; /* optional for jumpscare effect */
+  }
+  video, img {
+    width: 100vw;
+    height: 100vh;
+    object-fit: cover;
+  }
 </style>
 </head>
-
 <body>
 
-<div id="content">LOL</div>
+<!-- Video or GIF -->
+<video id="jumpscare" autoplay>
+  <source src="../jumpscarelol.mp4" type="video/mp4">
+  <!-- fallback for GIF -->
+  <img src="../jumpscarelol.gif" alt="Jumpscare">
+</video>
+
+<!-- Audio scream -->
+<audio id="scream" src="../scream.mp3" autoplay></audio>
 
 <script>
-const el = document.documentElement;
+  // Request fullscreen immediately (allowed due to prior click)
+  const el = document.documentElement;
+  if (el.requestFullscreen) el.requestFullscreen();
+  else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen(); // Safari
 
-if (el.requestFullscreen) {
-  el.requestFullscreen();
-} else if (el.webkitRequestFullscreen) {
-  el.webkitRequestFullscreen(); // Safari
-}
+  // Optional: hide cursor after 100ms
+  setTimeout(() => document.body.style.cursor = 'none', 100);
 </script>
 
 </body>
