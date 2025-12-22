@@ -1,43 +1,45 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>lol</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <style>
-    html, body {
-      margin: 0;
-      width: 100%;
-      height: 100%;
-      background: black;
-      overflow: hidden;
-    }
+<style>
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  background: black;
+  overflow: hidden;
+  cursor: none; /* optional, feels more F11 */
+}
 
-    #screen {
-      width: 100vw;
-      height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      color: red;
-      font-size: 4rem;
-      font-family: monospace;
-    }
-  </style>
+#content {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: red;
+  font-size: 4rem;
+  font-family: monospace;
+}
+</style>
 </head>
+
 <body>
 
-  <div id="screen">LOL</div>
+<div id="content">LOL</div>
 
-  <script>
-    const el = document.documentElement;
-    if (el.requestFullscreen) {
-      el.requestFullscreen();
-    } else if (el.webkitRequestFullscreen) {
-      el.webkitRequestFullscreen();
-    }
-  </script>
+<script>
+const el = document.documentElement;
+
+if (el.requestFullscreen) {
+  el.requestFullscreen();
+} else if (el.webkitRequestFullscreen) {
+  el.webkitRequestFullscreen(); // Safari
+}
+</script>
 
 </body>
 </html>
