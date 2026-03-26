@@ -2,32 +2,477 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Download</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NexWatch — Device Monitor</title>
 <style>
-  body {
-    margin: 0;
-    height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background: #0d1117;
-    font-family: sans-serif;
-  }
-  a {
-    text-decoration: none;
-    background: #238636;
-    color: white;
-    padding: 1.2rem 2.5rem;
-    font-size: 1.5rem;
-    border-radius: 12px;
-  }
-  a:hover { background: #2ea043; }
+/* ─── Reset & base ──────────────────────────────────── */
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg0:#08090d;--bg1:#0e1018;--bg2:#141720;--bg3:#1c2030;
+  --bdr:#252838;--bdr2:#2f3348;
+  --txt:#c8cde8;--txt2:#7a80a0;--txt3:#454a62;
+  --acc:#4f8ef7;--acc2:#6fa0ff;--acc-glow:rgba(79,142,247,.18);
+  --grn:#2dce7a;--red:#e85555;--amb:#f5a623;
+  --r:10px;--r2:6px;
+  font-family:'Segoe UI',system-ui,sans-serif;
+}
+
+body{background:var(--bg0);color:var(--txt);height:100vh;overflow:hidden}
+
+/* ─── Login overlay ─────────────────────────────────── */
+#login-overlay{
+  position:fixed;inset:0;z-index:100;
+  background:var(--bg0);
+  display:flex;align-items:center;justify-content:center;
+}
+#login-overlay.hidden{display:none}
+
+.login-card{
+  width:360px;
+  background:var(--bg2);
+  border:1px solid var(--bdr2);
+  border-radius:16px;
+  padding:36px 32px;
+}
+.login-logo{
+  display:flex;align-items:center;gap:10px;margin-bottom:28px;
+}
+.login-logo svg{width:32px;height:32px}
+.login-logo span{font-size:1.25rem;font-weight:700;letter-spacing:.5px;color:var(--acc2)}
+
+.login-card label{display:block;font-size:.75rem;color:var(--txt2);margin-bottom:6px;letter-spacing:.5px}
+.login-card input{
+  width:100%;background:var(--bg1);border:1px solid var(--bdr);
+  border-radius:var(--r2);color:var(--txt);font-size:.9rem;
+  padding:10px 14px;margin-bottom:16px;outline:none;transition:border .2s;
+}
+.login-card input:focus{border-color:var(--acc)}
+.login-btn{
+  width:100%;background:var(--acc);border:none;color:#fff;
+  font-size:.9rem;font-weight:600;padding:11px;border-radius:var(--r2);
+  cursor:pointer;transition:opacity .2s;
+}
+.login-btn:hover{opacity:.88}
+.login-err{font-size:.78rem;color:var(--red);margin-top:10px;min-height:18px;text-align:center}
+
+/* ─── App shell ─────────────────────────────────────── */
+#app{display:flex;height:100vh}
+#app.hidden{display:none}
+
+/* ─── Sidebar ───────────────────────────────────────── */
+#sidebar{
+  width:240px;flex-shrink:0;
+  background:var(--bg1);
+  border-right:1px solid var(--bdr);
+  display:flex;flex-direction:column;
+  overflow:hidden;
+}
+
+.side-header{
+  padding:18px 16px 14px;
+  border-bottom:1px solid var(--bdr);
+  display:flex;align-items:center;gap:10px;
+}
+.side-logo{width:26px;height:26px}
+.side-title{font-size:.95rem;font-weight:700;color:var(--acc2);letter-spacing:.5px}
+
+/* Profile card */
+.profile-card{
+  margin:14px 12px;
+  padding:12px;
+  background:var(--bg2);
+  border:1px solid var(--bdr);
+  border-radius:var(--r);
+  display:flex;align-items:center;gap:10px;
+}
+.profile-avatar{
+  width:38px;height:38px;border-radius:50%;
+  background:linear-gradient(135deg,#4f8ef7,#9b5de5);
+  display:flex;align-items:center;justify-content:center;
+  font-weight:700;font-size:.85rem;color:#fff;flex-shrink:0;
+  overflow:hidden;
+}
+.profile-avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.profile-info{overflow:hidden}
+.profile-name{font-size:.82rem;font-weight:600;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.profile-uid{font-size:.7rem;color:var(--txt3);margin-top:2px}
+
+/* Device list */
+.side-section-title{
+  font-size:.65rem;letter-spacing:1.2px;text-transform:uppercase;
+  color:var(--txt3);padding:10px 16px 6px;
+}
+#device-list{flex:1;overflow-y:auto;padding:4px 8px 8px}
+.dev-item{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 10px;border-radius:var(--r2);
+  cursor:pointer;transition:background .15s;margin-bottom:2px;
+  border:1px solid transparent;
+}
+.dev-item:hover{background:var(--bg2)}
+.dev-item.active{background:var(--bg3);border-color:var(--bdr2)}
+.dev-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.dev-dot.online{background:var(--grn);box-shadow:0 0 6px var(--grn)}
+.dev-dot.offline{background:var(--txt3)}
+.dev-name{font-size:.82rem;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dev-fps{font-size:.7rem;color:var(--txt2);margin-left:auto;flex-shrink:0}
+
+/* Conn status */
+.conn-bar{
+  padding:10px 16px;border-top:1px solid var(--bdr);
+  display:flex;align-items:center;gap:7px;
+  font-size:.72rem;color:var(--txt2);
+}
+.conn-bar .pulse{width:6px;height:6px;border-radius:50%}
+.pulse.ok{background:var(--grn);animation:pulse 2s infinite}
+.pulse.err{background:var(--red)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* ─── Main area ─────────────────────────────────────── */
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+
+/* Topbar */
+#topbar{
+  height:52px;flex-shrink:0;
+  background:var(--bg1);border-bottom:1px solid var(--bdr);
+  display:flex;align-items:center;padding:0 20px;gap:16px;
+}
+#topbar-device{font-size:.9rem;font-weight:600;color:var(--txt)}
+#topbar-status{font-size:.75rem;padding:3px 10px;border-radius:20px}
+#topbar-status.online{background:rgba(45,206,122,.12);color:var(--grn)}
+#topbar-status.offline{background:rgba(232,85,85,.1);color:var(--red)}
+#topbar-status.waiting{background:var(--bg2);color:var(--txt2)}
+.topbar-spacer{flex:1}
+#fps-badge{font-size:.75rem;color:var(--txt2)}
+#frame-counter{font-size:.72rem;color:var(--txt3)}
+
+/* Screen view */
+#screen-area{
+  flex:1;display:flex;align-items:center;justify-content:center;
+  background:#04050a;position:relative;overflow:hidden;
+}
+#screen-img{
+  max-width:100%;max-height:100%;
+  object-fit:contain;image-rendering:auto;
+  display:none;
+}
+#screen-placeholder{
+  display:flex;flex-direction:column;align-items:center;gap:12px;
+  color:var(--txt3);
+}
+#screen-placeholder svg{opacity:.25}
+#screen-placeholder p{font-size:.85rem;letter-spacing:.5px}
+
+/* Stats footer */
+#stats-bar{
+  height:38px;flex-shrink:0;
+  background:var(--bg1);border-top:1px solid var(--bdr);
+  display:flex;align-items:center;padding:0 20px;gap:24px;
+}
+.stat-chip{display:flex;align-items:center;gap:6px;font-size:.72rem}
+.stat-chip span:first-child{color:var(--txt3)}
+.stat-chip span:last-child{color:var(--txt)}
+
+/* No devices empty state */
+#empty-state{
+  flex:1;display:flex;align-items:center;justify-content:center;
+  color:var(--txt3);font-size:.85rem;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--bdr2);border-radius:4px}
 </style>
 </head>
 <body>
 
-<a href="/lol/">hitlock client crack</a>
+<!-- ═══════════════════════════════ LOGIN ════════════════════════════════════ -->
+<div id="login-overlay">
+  <div class="login-card">
+    <div class="login-logo">
+      <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="32" height="32" rx="8" fill="#4f8ef7" fill-opacity=".15"/>
+        <rect x="5" y="8" width="22" height="16" rx="3" stroke="#4f8ef7" stroke-width="1.5"/>
+        <line x1="12" y1="24" x2="20" y2="24" stroke="#4f8ef7" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="16" cy="16" r="3" fill="#4f8ef7"/>
+      </svg>
+      <span>NexWatch</span>
+    </div>
+    <label for="login-user">USERNAME</label>
+    <input id="login-user" type="text" placeholder="Enter username" autocomplete="off">
+    <label for="login-pass">PASSWORD</label>
+    <input id="login-pass" type="password" placeholder="Enter password" autocomplete="off">
+    <button class="login-btn" onclick="doLogin()">Sign In</button>
+    <div class="login-err" id="login-err"></div>
+  </div>
+</div>
 
+<!-- ════════════════════════════════ APP ═════════════════════════════════════ -->
+<div id="app" class="hidden">
+  <!-- Sidebar -->
+  <div id="sidebar">
+    <div class="side-header">
+      <svg class="side-logo" viewBox="0 0 26 26" fill="none">
+        <rect width="26" height="26" rx="6" fill="#4f8ef7" fill-opacity=".12"/>
+        <rect x="3" y="6" width="20" height="14" rx="2.5" stroke="#4f8ef7" stroke-width="1.2"/>
+        <line x1="9" y1="20" x2="17" y2="20" stroke="#4f8ef7" stroke-width="1.6" stroke-linecap="round"/>
+        <circle cx="13" cy="13" r="2.5" fill="#4f8ef7"/>
+      </svg>
+      <span class="side-title">NexWatch</span>
+    </div>
+
+    <!-- Profile -->
+    <div class="profile-card">
+      <div class="profile-avatar" id="profile-avatar-wrap">
+        <span id="profile-initials">SS</span>
+      </div>
+      <div class="profile-info">
+        <div class="profile-name" id="profile-username">sevsippin</div>
+        <div class="profile-uid" id="profile-uid">UID #332</div>
+      </div>
+    </div>
+
+    <div class="side-section-title">Connected Devices</div>
+    <div id="device-list">
+      <div id="no-devices-msg" style="padding:8px 10px;font-size:.78rem;color:var(--txt3)">
+        No devices connected
+      </div>
+    </div>
+
+    <div class="conn-bar">
+      <div class="pulse err" id="conn-pulse"></div>
+      <span id="conn-label">Connecting…</span>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div id="main">
+    <div id="topbar">
+      <span id="topbar-device" style="color:var(--txt2)">No device selected</span>
+      <span id="topbar-status" class="waiting">Waiting</span>
+      <span class="topbar-spacer"></span>
+      <span id="fps-badge"></span>
+      <span id="frame-counter"></span>
+    </div>
+
+    <div id="screen-area">
+      <img id="screen-img" alt="screen">
+      <div id="screen-placeholder">
+        <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+          <rect x="4" y="10" width="56" height="38" rx="5" stroke="#7a80a0" stroke-width="2"/>
+          <line x1="24" y1="48" x2="40" y2="48" stroke="#7a80a0" stroke-width="2" stroke-linecap="round"/>
+          <line x1="32" y1="48" x2="32" y2="54" stroke="#7a80a0" stroke-width="2"/>
+          <line x1="20" y1="54" x2="44" y2="54" stroke="#7a80a0" stroke-width="2" stroke-linecap="round"/>
+          <circle cx="32" cy="29" r="8" stroke="#7a80a0" stroke-width="1.5" stroke-dasharray="3 3"/>
+        </svg>
+        <p>Select a device to view its screen</p>
+      </div>
+    </div>
+
+    <div id="stats-bar">
+      <div class="stat-chip"><span>FPS</span><span id="stat-fps">—</span></div>
+      <div class="stat-chip"><span>Frames</span><span id="stat-frames">—</span></div>
+      <div class="stat-chip"><span>Last seen</span><span id="stat-lastseen">—</span></div>
+      <div class="stat-chip"><span>Status</span><span id="stat-status">—</span></div>
+      <div class="stat-chip" style="margin-left:auto">
+        <span>Server</span><span id="stat-server" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">—</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════════════════════
+// CONFIG — edit SERVER_URL to point at your server
+// ══════════════════════════════════════════════════════════════════════════════
+const CONFIG = {
+  SERVER_URL: "http://localhost:8080",   // ← change to https://yourserver.com
+  CREDENTIALS: {
+    admin:     "admin",           // username → password
+    sevsippin: "admin"            // sevsippin can also log in with "admin"
+  },
+  PROFILE: {
+    username:   "sevsippin",
+    uid:        "332",
+    // Gravatar-style avatar — leave empty to use initials
+    avatarUrl:  ""
+  }
+};
+
+// ─── Login ────────────────────────────────────────────────────────────────────
+function doLogin() {
+  const user = document.getElementById("login-user").value.trim();
+  const pass = document.getElementById("login-pass").value;
+  const err  = document.getElementById("login-err");
+  if (!CONFIG.CREDENTIALS[user] || CONFIG.CREDENTIALS[user] !== pass) {
+    err.textContent = "Invalid username or password";
+    document.getElementById("login-pass").value = "";
+    return;
+  }
+  err.textContent = "";
+  document.getElementById("login-overlay").classList.add("hidden");
+  document.getElementById("app").classList.remove("hidden");
+  initProfile(user);
+  startSSE();
+}
+
+// Allow Enter key in inputs
+["login-user","login-pass"].forEach(id =>
+  document.getElementById(id).addEventListener("keydown", e => { if(e.key==="Enter") doLogin(); })
+);
+
+// ─── Profile ──────────────────────────────────────────────────────────────────
+function initProfile(loggedInUser) {
+  // Always show sevsippin as profile
+  const p = CONFIG.PROFILE;
+  document.getElementById("profile-username").textContent = p.username;
+  document.getElementById("profile-uid").textContent      = "UID #" + p.uid;
+
+  const initials = p.username.slice(0,2).toUpperCase();
+  document.getElementById("profile-initials").textContent = initials;
+
+  if (p.avatarUrl) {
+    const img = document.createElement("img");
+    img.src = p.avatarUrl;
+    img.onerror = () => {};  // fall back to initials on error
+    document.getElementById("profile-avatar-wrap").prepend(img);
+  }
+}
+
+// ─── State ────────────────────────────────────────────────────────────────────
+const devices   = {};
+let activeDevice = null;
+let sseConn     = null;
+let statsTimer  = null;
+
+// ─── SSE connection ───────────────────────────────────────────────────────────
+function startSSE() {
+  const url = CONFIG.SERVER_URL + "/events";
+  document.getElementById("stat-server").textContent = CONFIG.SERVER_URL;
+
+  function connect() {
+    if (sseConn) { sseConn.close(); sseConn = null; }
+    sseConn = new EventSource(url);
+
+    sseConn.onopen = () => {
+      document.getElementById("conn-pulse").className  = "pulse ok";
+      document.getElementById("conn-label").textContent = "Connected";
+    };
+
+    sseConn.onerror = () => {
+      document.getElementById("conn-pulse").className  = "pulse err";
+      document.getElementById("conn-label").textContent = "Reconnecting…";
+      setTimeout(connect, 3000);
+    };
+
+    sseConn.onmessage = (e) => {
+      let msg;
+      try { msg = JSON.parse(e.data); } catch { return; }
+
+      if (msg.type === "stats") {
+        for (const d of msg.devices) {
+          devices[d.device_id] = d;
+        }
+        renderDeviceList();
+        if (activeDevice) updateStatsBar(activeDevice);
+      }
+
+      if (msg.type === "frame" && msg.device === activeDevice) {
+        showFrame(msg.data);
+        updateStatsBar(activeDevice);
+      }
+    };
+  }
+
+  connect();
+}
+
+// ─── Device list rendering ────────────────────────────────────────────────────
+function renderDeviceList() {
+  const list = document.getElementById("device-list");
+  const noMsg = document.getElementById("no-devices-msg");
+  const devs  = Object.values(devices);
+
+  if (devs.length === 0) { noMsg.style.display="block"; return; }
+  noMsg.style.display = "none";
+
+  // Build a set of existing IDs already rendered
+  const existing = new Set(
+    [...list.querySelectorAll(".dev-item")].map(el => el.dataset.id)
+  );
+
+  // Add new devices
+  for (const d of devs) {
+    if (!existing.has(d.device_id)) {
+      const el = document.createElement("div");
+      el.className  = "dev-item";
+      el.dataset.id = d.device_id;
+      el.innerHTML  = `
+        <div class="dev-dot ${d.connected ? 'online':'offline'}"></div>
+        <span class="dev-name">${escHtml(d.device_id)}</span>
+        <span class="dev-fps">${d.fps ? d.fps+'fps' : ''}</span>
+      `;
+      el.onclick = () => selectDevice(d.device_id);
+      list.insertBefore(el, noMsg);
+    } else {
+      // Update existing
+      const el = list.querySelector(`.dev-item[data-id="${CSS.escape(d.device_id)}"]`);
+      if (el) {
+        el.querySelector(".dev-dot").className = `dev-dot ${d.connected?'online':'offline'}`;
+        el.querySelector(".dev-fps").textContent = d.fps ? d.fps+'fps' : '';
+      }
+    }
+    // If no device is selected yet and this one is online, auto-select it
+    if (!activeDevice && d.connected) selectDevice(d.device_id);
+  }
+}
+
+function selectDevice(id) {
+  activeDevice = id;
+  document.querySelectorAll(".dev-item").forEach(el =>
+    el.classList.toggle("active", el.dataset.id === id)
+  );
+  document.getElementById("topbar-device").textContent = id;
+  const d = devices[id];
+  if (d) {
+    const status = d.connected ? "online" : "offline";
+    const tb = document.getElementById("topbar-status");
+    tb.textContent = d.connected ? "Online" : "Offline";
+    tb.className   = status;
+  }
+  updateStatsBar(id);
+}
+
+// ─── Frame display ────────────────────────────────────────────────────────────
+function showFrame(b64) {
+  const img = document.getElementById("screen-img");
+  const ph  = document.getElementById("screen-placeholder");
+  img.src             = "data:image/jpeg;base64," + b64;
+  img.style.display   = "block";
+  ph.style.display    = "none";
+}
+
+// ─── Stats bar ────────────────────────────────────────────────────────────────
+function updateStatsBar(id) {
+  const d = devices[id];
+  if (!d) return;
+  document.getElementById("stat-fps").textContent      = d.fps || "—";
+  document.getElementById("stat-frames").textContent   = d.frame_count || "—";
+  document.getElementById("stat-lastseen").textContent = d.last_seen != null ? d.last_seen+"s" : "—";
+  document.getElementById("stat-status").textContent   = d.connected ? "Online" : "Offline";
+  document.getElementById("fps-badge").textContent     = d.fps ? d.fps+" fps" : "";
+  document.getElementById("frame-counter").textContent = d.frame_count ? "#"+d.frame_count : "";
+  const tb = document.getElementById("topbar-status");
+  tb.textContent = d.connected ? "Online" : "Offline";
+  tb.className   = d.connected ? "online" : "offline";
+}
+
+// ─── Util ─────────────────────────────────────────────────────────────────────
+function escHtml(str) {
+  return str.replace(/[&<>"']/g, c =>
+    ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+}
+</script>
 </body>
 </html>
