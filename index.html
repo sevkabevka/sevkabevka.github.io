@@ -210,9 +210,10 @@
 </div>
 
 <script>
-let evtSource = null;
-const frames  = {};   // device_id -> latest base64 jpeg
-const devices = {};   // device_id -> stats
+const frames      = {};   // device_id -> latest base64 jpeg
+const devices     = {};   // device_id -> stats (as received from server)
+const seenAt      = {};   // device_id -> { last_seen: float, receivedAt: float }
+                          // receivedAt = Date.now()/1000 when the stats message arrived
 
 function connect() {
   const raw = document.getElementById("server-url").value.trim().replace(/\/$/, "");
@@ -221,29 +222,59 @@ function connect() {
   startSSE(raw);
 }
 
+let sseAbort = null;
+
 function startSSE(base) {
-  if (evtSource) { evtSource.close(); }
+  if (sseAbort) { sseAbort.abort(); }
+  sseAbort = new AbortController();
   setStatus(false, "Connecting…");
+  connectFetch(base, sseAbort.signal);
+}
 
-  evtSource = new EventSource(base + "/events");
+async function connectFetch(base, signal) {
+  while (!signal.aborted) {
+    try {
+      const resp = await fetch(base + "/events", {
+        signal,
+        headers: { "ngrok-skip-browser-warning": "true" }
+      });
+      if (!resp.ok) throw new Error("HTTP " + resp.status);
+      setStatus(true, "Live");
 
-  evtSource.onopen = () => setStatus(true, "Live");
+      const reader = resp.body.getReader();
+      const dec    = new TextDecoder();
+      let buf      = "";
 
-  evtSource.onerror = () => {
-    setStatus(false, "Disconnected — retrying…");
-  };
-
-  evtSource.onmessage = (e) => {
-    let msg;
-    try { msg = JSON.parse(e.data); } catch { return; }
-
-    if (msg.type === "stats") {
-      msg.devices.forEach(d => updateDeviceStats(d));
-    } else if (msg.type === "frame") {
-      frames[msg.device] = msg.data;
-      updateDeviceFrame(msg.device, msg.data);
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        const parts = buf.split("\n\n");
+        buf = parts.pop();
+        for (const part of parts) {
+          const line = part.trim();
+          if (!line.startsWith("data:")) continue;
+          const raw = line.slice(5).trim();
+          let msg;
+          try { msg = JSON.parse(raw); } catch { continue; }
+          if (msg.type === "stats") {
+            const now = Date.now() / 1000;
+            msg.devices.forEach(d => {
+              seenAt[d.device_id] = { last_seen: d.last_seen, receivedAt: now };
+              updateDeviceStats(d);
+            });
+          } else if (msg.type === "frame") {
+            frames[msg.device] = msg.data;
+            updateDeviceFrame(msg.device, msg.data);
+          }
+        }
+      }
+    } catch (err) {
+      if (signal.aborted) return;
+      setStatus(false, "Disconnected — retrying…");
     }
-  };
+    if (!signal.aborted) await new Promise(r => setTimeout(r, 3000));
+  }
 }
 
 function setStatus(live, text) {
@@ -345,9 +376,13 @@ if (saved) {
 
 // Refresh "X s ago" every second
 setInterval(() => {
-  Object.values(devices).forEach(d => {
-    const el = document.getElementById("seen-" + d.device_id);
-    if (el) el.textContent = Math.round(d.last_seen + (Date.now()/1000 - (performance.now()/1000))) + "s ago";
+  const now = Date.now() / 1000;
+  Object.keys(seenAt).forEach(did => {
+    const el = document.getElementById("seen-" + did);
+    if (!el) return;
+    const { last_seen, receivedAt } = seenAt[did];
+    const elapsed = Math.round(last_seen + (now - receivedAt));
+    el.textContent = elapsed + "s ago";
   });
 }, 1000);
 </script>
