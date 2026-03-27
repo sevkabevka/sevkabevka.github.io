@@ -625,9 +625,61 @@ function toggleMic() {
   if (!currentDevice) return;
   micEnabled[currentDevice] = !micEnabled[currentDevice];
   const on = micEnabled[currentDevice];
-  sendAudioCommand(currentDevice, on);
   updateMicUI(on);
-  if (on && !audioCtx) audioCtx = new AudioContext({ sampleRate: 16000 });
+  if (on) {
+    startBrowserMic(currentDevice);
+  } else {
+    stopBrowserMic();
+  }
+}
+
+let micStream     = null;
+let micProcessor  = null;
+
+async function startBrowserMic(did) {
+  if (!audioCtx) audioCtx = new AudioContext({ sampleRate: 16000 });
+  if (audioCtx.state === 'suspended') await audioCtx.resume();
+  try {
+    micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+  } catch (e) {
+    console.warn('Mic access denied:', e);
+    micEnabled[did] = false;
+    updateMicUI(false);
+    return;
+  }
+  const source    = audioCtx.createMediaStreamSource(micStream);
+  micProcessor    = audioCtx.createScriptProcessor(1024, 1, 1);
+  source.connect(micProcessor);
+  micProcessor.connect(audioCtx.destination);
+  micProcessor.onaudioprocess = (e) => {
+    if (!micEnabled[did]) return;
+    const float32 = e.inputBuffer.getChannelData(0);
+    const pcm16   = new Int16Array(float32.length);
+    for (let i = 0; i < float32.length; i++)
+      pcm16[i] = Math.max(-32768, Math.min(32767, float32[i] * 32768));
+    const bytes = new Uint8Array(pcm16.buffer);
+    let bin = '';
+    for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+    sendAudioChunk(did, btoa(bin));
+  };
+}
+
+function stopBrowserMic() {
+  if (micProcessor) { micProcessor.disconnect(); micProcessor = null; }
+  if (micStream)    { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+}
+
+
+async function sendAudioChunk(did, b64) {
+  const base = localStorage.getItem('monitor_url');
+  if (!base) return;
+  try {
+    await fetch(base + '/audio_data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
+      body: JSON.stringify({ device_id: did, data: b64 })
+    });
+  } catch (e) {}
 }
 
 function updateMicUI(on) {
@@ -638,18 +690,6 @@ function updateMicUI(on) {
   btn.className   = on ? 'active' : '';
   status.textContent = on ? 'Streaming…' : 'Toggle to enable';
   icon.style.opacity = on ? '1' : '0.4';
-}
-
-async function sendAudioCommand(did, on) {
-  const base = localStorage.getItem('monitor_url');
-  if (!base) return;
-  try {
-    await fetch(base + '/audio_cmd', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
-      body: JSON.stringify({ device_id: did, enable: on })
-    });
-  } catch (e) { console.warn('audio cmd failed', e); }
 }
 
 function playAudioChunk(b64) {
@@ -765,10 +805,6 @@ async function connectFetch(base, signal) {
               img.style.display = 'block';
               nof.style.display = 'none';
               document.getElementById('webcam-status').textContent = 'Live ●';
-            }
-            } else if (msg.type === 'audio_chunk') {
-            if (currentDevice === msg.device && micEnabled[currentDevice]) {
-              playAudioChunk(msg.data);
             }
           }
         
