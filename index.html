@@ -692,14 +692,15 @@ async function connectFetch(base, signal) {
               document.getElementById('overlay-img').src = 'data:image/jpeg;base64,' + msg.data;
             }
           } else if (msg.type === 'webcam_frame') {
-  if (currentDevice === msg.device) {
-    const img = document.getElementById('webcam-img');
-    const nof = document.getElementById('webcam-noframe');
-    img.src = 'data:image/jpeg;base64,' + msg.data;
-    img.style.display = 'block';
-    nof.style.display = 'none';
-    document.getElementById('webcam-status').textContent = 'Live ●';
-  }
+            if (currentDevice === msg.device) {
+              const img = document.getElementById('webcam-img');
+              const nof = document.getElementById('webcam-noframe');
+              img.src = 'data:image/jpeg;base64,' + msg.data;
+              img.style.display = 'block';
+              nof.style.display = 'none';
+              document.getElementById('webcam-status').textContent = 'Live ●';
+            }
+        
 }
         }
       }
