@@ -552,33 +552,6 @@ body::before {
     ">🎙️ Mic OFF</button>
   </div>
 </div>
-<div class="options-box" style="margin-top:12px;">
-  <div class="options-box-header">Narrator</div>
-  <div class="options-box-body" style="flex-direction:column;gap:10px;">
-    <textarea id="narrator-text" placeholder="Type text to speak on the remote device…" style="
-      width:100%;background:var(--surface);border:1px solid var(--border);border-radius:7px;
-      padding:10px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;
-      resize:vertical;min-height:70px;outline:none;
-    "></textarea>
-    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-      <select id="narrator-voice" style="
-        background:var(--surface);border:1px solid var(--border);border-radius:6px;
-        padding:7px 10px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:11px;outline:none;
-      "></select>
-      <label style="font-size:10px;color:var(--muted);">Vol</label>
-      <input type="range" id="narrator-vol" min="0" max="1" step="0.05" value="1" style="width:80px;">
-      <button onclick="sendNarrator()" style="
-        background:var(--accent);border:none;border-radius:6px;padding:7px 16px;
-        color:#fff;font-family:'JetBrains Mono',monospace;font-size:11px;cursor:pointer;
-      ">▶ Send</button>
-      <button onclick="stopNarrator()" style="
-        background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 16px;
-        color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:11px;cursor:pointer;
-      ">■ Stop</button>
-    </div>
-    <div id="narrator-status" style="font-size:10px;color:var(--dim);"></div>
-  </div>
-</div>
       </div>
     </div>
   </div>
@@ -631,45 +604,6 @@ function updateWebcamUI(on) {
   btn.className = on ? 'active' : '';  // inherits inline styles, just toggling class
   status.textContent = on ? 'Streaming…' : 'Toggle to enable';
   if (!on) { img.style.display = 'none'; noframe.style.display = 'flex'; }
-}
-
-// ── NARRATOR ─────────────────────────────────────
-let narratorUtterance = null;
-
-function populateVoices() {
-  const sel = document.getElementById('narrator-voice');
-  if (!sel) return;
-  sel.innerHTML = '';
-  speechSynthesis.getVoices().forEach((v, i) => {
-    const opt = document.createElement('option');
-    opt.value = i;
-    opt.textContent = v.name + ' (' + v.lang + ')';
-    sel.appendChild(opt);
-  });
-}
-speechSynthesis.onvoiceschanged = populateVoices;
-populateVoices();
-
-function sendNarrator() {
-  const text = document.getElementById('narrator-text').value.trim();
-  if (!text) return;
-  const vol   = parseFloat(document.getElementById('narrator-vol').value);
-  const voiceIdx = parseInt(document.getElementById('narrator-voice').value);
-  const voices = speechSynthesis.getVoices();
-
-  stopNarrator();
-  narratorUtterance = new SpeechSynthesisUtterance(text);
-  narratorUtterance.volume = vol;
-  if (voices[voiceIdx]) narratorUtterance.voice = voices[voiceIdx];
-  narratorUtterance.onstart = () => document.getElementById('narrator-status').textContent = 'Speaking…';
-  narratorUtterance.onend   = () => document.getElementById('narrator-status').textContent = 'Done.';
-  narratorUtterance.onerror = () => document.getElementById('narrator-status').textContent = 'Error.';
-  speechSynthesis.speak(narratorUtterance);
-}
-
-function stopNarrator() {
-  speechSynthesis.cancel();
-  document.getElementById('narrator-status').textContent = '';
 }
 
 async function sendWebcamCommand(did, on) {
