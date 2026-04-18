@@ -1,86 +1,51 @@
-<!-- =====================================================
-     SOUND MONITOR CONTROLS
-     Paste this anywhere in your index.html <body>
-     Replace YOUR_MASTER_KEY below with your JSONBin master key
-     Get it from: https://jsonbin.io/app/app/api-keys
-===================================================== -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Background Video</title>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
-<style>
-  .sound-monitor {
-    display: inline-flex;
-    gap: 10px;
-    align-items: center;
-    font-family: sans-serif;
-  }
-  .sm-btn {
-    padding: 10px 24px;
-    border: none;
-    border-radius: 8px;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: opacity 0.15s, transform 0.1s;
-  }
-  .sm-btn:active { transform: scale(0.96); }
-  .sm-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-  .sm-btn-enable  { background: #22c55e; color: #fff; }
-  .sm-btn-disable { background: #ef4444; color: #fff; }
-  .sm-status {
-    font-size: 13px;
-    color: #888;
-    min-width: 80px;
-  }
-</style>
-
-<div class="sound-monitor">
-  <button class="sm-btn sm-btn-enable"  onclick="setSoundState('enabled')" >Enable Sound</button>
-  <button class="sm-btn sm-btn-disable" onclick="setSoundState('disabled')">Disable Sound</button>
-  <span class="sm-status" id="sm-status">...</span>
-</div>
-
-<script>
-  const BIN_ID     = "69cad73736566621a862aed6";
-  const MASTER_KEY = "$2a$10$6.rhrJu8pxalgRnlJe/dnurY/O0vMM86k239QJXMnPaio2BSXUa/e"; // ← paste your JSONBin master key here
-
-  const BASE_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
-  const HEADERS  = {
-    "Content-Type": "application/json",
-    "X-Master-Key": MASTER_KEY
-  };
-
-  // Show current state on page load
-  async function getSoundState() {
-    try {
-      const res  = await fetch(BASE_URL + "/latest", { headers: HEADERS });
-      const data = await res.json();
-      updateStatus(data.record.state);
-    } catch (e) {
-      document.getElementById("sm-status").textContent = "error";
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #000;
     }
-  }
 
-  // Set state to "enabled" or "disabled"
-  async function setSoundState(state) {
-    document.querySelectorAll(".sm-btn").forEach(b => b.disabled = true);
-    document.getElementById("sm-status").textContent = "saving...";
-    try {
-      await fetch(BASE_URL, {
-        method:  "PUT",
-        headers: HEADERS,
-        body:    JSON.stringify({ state })
-      });
-      updateStatus(state);
-    } catch (e) {
-      document.getElementById("sm-status").textContent = "error";
+    #bg-video {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+      z-index: 0;
     }
-    document.querySelectorAll(".sm-btn").forEach(b => b.disabled = false);
-  }
+  </style>
+</head>
+<body>
 
-  function updateStatus(state) {
-    const el = document.getElementById("sm-status");
-    el.textContent = state === "enabled" ? "🔊 enabled" : "🔇 disabled";
-    el.style.color  = state === "enabled" ? "#22c55e"   : "#ef4444";
-  }
+  <video id="bg-video" autoplay muted playsinline preload="auto">
+    <source src="bg.mp4" type="video/mp4">
+  </video>
 
-  getSoundState();
-</script>
+  <script>
+    const video = document.getElementById('bg-video');
+
+    video.addEventListener('ended', () => {
+      // Stay on the last frame — do not loop, do not reset
+      video.pause();
+    });
+
+    // Fallback: if browser fires timeupdate near the end, clamp it
+    video.addEventListener('timeupdate', () => {
+      if (video.duration && video.currentTime >= video.duration - 0.05) {
+        video.pause();
+      }
+    });
+  </script>
+
+</body>
+</html>
